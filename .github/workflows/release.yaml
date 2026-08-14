@@ -18,7 +18,7 @@ env:
 
 jobs:
   publish:
-    if: github.repository == 'daytonaio/daytona'
+    if: github.repository == 'lianghx123/daytona'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: write
@@ -221,6 +221,7 @@ jobs:
             arch: arm64
     permissions:
       contents: read
+      packages: write
     env:
       NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
       PUBLIC_ALGOLIA_DOCS_INDEX_NAME: ${{ secrets.PUBLIC_ALGOLIA_DOCS_INDEX_NAME }}
@@ -272,12 +273,12 @@ jobs:
           GONOSUMDB=github.com/daytonaio/daytona go work sync
           touch go.work.sum
 
-      - name: Log in to the Container registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
-          registry: docker.io
-          username: daytonaio
-          password: ${{ secrets.DOCKER_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Blacksmith Builder
         uses: useblacksmith/setup-docker-builder@ab5c1da94f53f5cd75c1038092aa276dddfccbba # v1.9.0
@@ -303,7 +304,6 @@ jobs:
       - name: Cleanup credentials
         if: always()
         run: |
-          docker logout docker.io 2>/dev/null || true
           docker logout ghcr.io 2>/dev/null || true
 
   # Push combined manifest
@@ -312,6 +312,7 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
+      packages: write
     env:
       NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
     steps:
@@ -333,12 +334,12 @@ jobs:
           key: yarn-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
           restore-keys: yarn-${{ runner.os }}-${{ runner.arch }}-
       - run: yarn install --immutable
-      - name: Log in to the Container registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
-          registry: docker.io
-          username: daytonaio
-          password: ${{ secrets.DOCKER_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Push manifest
         run: |
           yarn push-manifest
@@ -346,7 +347,6 @@ jobs:
       - name: Cleanup credentials
         if: always()
         run: |
-          docker logout docker.io 2>/dev/null || true
           docker logout ghcr.io 2>/dev/null || true
 
   sync_gosum:

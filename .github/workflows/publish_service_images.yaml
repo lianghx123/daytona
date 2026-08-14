@@ -1,0 +1,62 @@
+name: Publish Service Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Image tag to publish (for example, 0.1.0)
+        required: true
+        default: '0.1.0-dev'
+
+permissions: {}
+
+env:
+  VERSION: ${{ inputs.version }}
+  BUILDX_NO_DEFAULT_ATTESTATIONS: 1
+  NX_DAEMON: 'false'
+
+jobs:
+  docker_build:
+    name: Build and publish AMD64 service images
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Set up buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up build toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          install-python: 'false'
+          install-ruby: 'false'
+          install-java: 'false'
+          install-poetry: 'false'
+          install-swag: 'false'
+          run-poetry-install: 'false'
+
+      - name: Ensure go.work.sum exists
+        run: touch go.work.sum
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push service images
+        env:
+          ARCH: -amd64
+        run: |
+          yarn nx run-many \
+            --target=docker \
+            --projects=api,proxy,runner,ssh-gateway \
+            --configuration=production \
+            --parallel=2 \
+            --nxBail=true

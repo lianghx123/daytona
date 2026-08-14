@@ -19,7 +19,7 @@ env:
 jobs:
   publish:
     if: github.repository == 'lianghx123/daytona'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
@@ -109,7 +109,7 @@ jobs:
 
   build_projects:
     needs: publish
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
@@ -215,9 +215,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: blacksmith-16vcpu-ubuntu-2404
+          - runner: ubuntu-24.04
             arch: amd64
-          - runner: blacksmith-16vcpu-ubuntu-2404-arm
+          - runner: ubuntu-24.04-arm
             arch: arm64
     permissions:
       contents: read
@@ -309,7 +309,7 @@ jobs:
   # Push combined manifest
   docker_push_manifest:
     needs: docker_build
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -351,7 +351,7 @@ jobs:
 
   sync_gosum:
     needs: build_projects
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write

@@ -38,7 +38,7 @@ permissions: {}
 jobs:
   publish:
     if: github.repository == 'daytonaio/daytona'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     name: Publish ${{ matrix.name }}
@@ -131,7 +131,7 @@ jobs:
 
   update-homebrew-tap:
     if: ${{ github.repository == 'daytonaio/daytona' && inputs.npm_tag == 'latest' }}
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions: {}
     name: Update Homebrew CLI tap
     steps:

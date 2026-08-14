@@ -17,7 +17,7 @@ jobs:
   docker-build:
     if: github.repository == 'lianghx123/daytona' && github.event.pull_request.head.repo.full_name == github.repository
     name: Docker build
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       VERSION: v0.0.0-pr

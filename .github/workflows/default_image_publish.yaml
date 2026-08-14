@@ -27,9 +27,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: blacksmith-16vcpu-ubuntu-2404-arm
+          - runner: ubuntu-24.04-arm
             platform: linux/arm64
-          - runner: blacksmith-16vcpu-ubuntu-2404
+          - runner: ubuntu-24.04
             platform: linux/amd64
 
     runs-on: ${{ matrix.runner }}
@@ -150,7 +150,7 @@ jobs:
 
   docker_manifest:
     needs: docker_build
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

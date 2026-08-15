@@ -22,6 +22,12 @@ type S3VolumeMounter struct{ docker *DockerClient }
 
 func (m *S3VolumeMounter) BackendType() string { return dto.VolumeBackendManagedS3 }
 func (m *S3VolumeMounter) MountCommand(ctx context.Context, volume dto.VolumeDTO, _ *dto.VolumeMountCredentialDTO, target string) (*exec.Cmd, error) {
+	if _, err := exec.LookPath("mount-s3"); err != nil {
+		return nil, fmt.Errorf("mount-s3 command is not installed: %w", err)
+	}
+	if _, err := os.Stat("/dev/fuse"); err != nil {
+		return nil, fmt.Errorf("FUSE device /dev/fuse is not available: %w", err)
+	}
 	return m.docker.getS3MountCmd(ctx, volumeMountPrefix+volume.VolumeId, target), nil
 }
 

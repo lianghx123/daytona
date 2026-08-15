@@ -1,5 +1,31 @@
 FROM golang:1.25.11-alpine AS go-toolchain
 
+FROM rust:1.89-alpine3.22 AS mount-s3-build
+
+ARG MOUNT_S3_VERSION=1.20.0
+ARG MOUNT_S3_REVISION=3e65af8a82499b8ff23ebead21e3003ba770bfbf
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
+# AWS does not publish Alpine/musl binaries for Mountpoint. Build the pinned
+# release from source so mount-s3 is compatible with the runner's Alpine base.
+RUN apk add --no-cache \
+  build-base \
+  clang \
+  clang-dev \
+  cmake \
+  fuse3-dev \
+  git \
+  libunwind-dev \
+  linux-headers \
+  llvm-dev \
+  pkgconf \
+  zlib-dev \
+  && git clone --branch "mountpoint-s3-${MOUNT_S3_VERSION}" --depth 1 --recurse-submodules \
+    https://github.com/awslabs/mountpoint-s3.git /src/mountpoint-s3 \
+  && cd /src/mountpoint-s3 \
+  && test "$(git rev-parse HEAD)" = "${MOUNT_S3_REVISION}" \
+  && cargo build --release --locked --package mountpoint-s3
+
 FROM node:22-alpine AS build
 
 ENV CI=true
@@ -69,7 +95,7 @@ ARG TARGETARCH
 ARG JUICEFS_VERSION=1.4.1
 
 RUN apk update && apk upgrade --no-cache openssl pcre2 \
-  && apk add --no-cache curl rsync fuse3 util-linux \
+  && apk add --no-cache curl rsync fuse3 libgcc libstdc++ libunwind util-linux \
   && JUICEFS_SHA256=$([ "$TARGETARCH" = "arm64" ] \
       && echo "1015ade83a7a93180a29f6c93ee5780a3eda52522331934ef2ef0cc0921995fd" \
       || echo "01ee09a21a9351a465e09906f113845e1c6a19bea70f530e5e2b2125b2dd3b82") \
@@ -82,8 +108,13 @@ RUN apk update && apk upgrade --no-cache openssl pcre2 \
 WORKDIR /usr/local/bin
 
 COPY --from=build /daytona/dist/apps/runner daytona-runner
+COPY --from=mount-s3-build /src/mountpoint-s3/target/release/mount-s3 mount-s3
 
-RUN chmod +x daytona-runner
+RUN chmod +x daytona-runner mount-s3 \
+  && mount-s3 --version \
+  && juicefs version \
+  && command -v mountpoint \
+  && command -v umount
 
 RUN mkdir -p /etc/docker && echo '{"insecure-registries": ["registry:6000"]}' > /etc/docker/daemon.json
 

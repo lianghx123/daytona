@@ -6,9 +6,11 @@ package docker
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/daytonaio/runner/pkg/api/dto"
 )
@@ -27,6 +29,12 @@ func (m *S3VolumeMounter) MountCommand(ctx context.Context, volume dto.VolumeDTO
 	}
 	if _, err := os.Stat("/dev/fuse"); err != nil {
 		return nil, fmt.Errorf("FUSE device /dev/fuse is not available: %w", err)
+	}
+	if endpoint := strings.TrimSpace(m.docker.awsEndpointUrl); endpoint != "" {
+		parsedEndpoint, err := url.ParseRequestURI(endpoint)
+		if err != nil || parsedEndpoint.Scheme == "" || parsedEndpoint.Host == "" {
+			return nil, fmt.Errorf("AWS_ENDPOINT_URL must be an absolute URL with a valid host: %q", endpoint)
+		}
 	}
 	return m.docker.getS3MountCmd(ctx, volumeMountPrefix+volume.VolumeId, target), nil
 }

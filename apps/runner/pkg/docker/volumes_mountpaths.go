@@ -257,12 +257,12 @@ func (d *DockerClient) waitForMountReady(ctx context.Context, path string) error
 
 func (d *DockerClient) getS3MountCmd(ctx context.Context, volume string, path string) *exec.Cmd {
 	args := []string{"--allow-other", "--allow-delete", "--allow-overwrite", "--file-mode", "0666", "--dir-mode", "0777"}
+	if endpoint := strings.TrimSpace(d.awsEndpointUrl); endpoint != "" {
+		args = append(args, "--endpoint-url", endpoint, "--force-path-style")
+	}
 	args = append(args, volume, path)
 
 	var envVars []string
-	if d.awsEndpointUrl != "" {
-		envVars = append(envVars, "AWS_ENDPOINT_URL="+d.awsEndpointUrl)
-	}
 	if d.awsAccessKeyId != "" {
 		envVars = append(envVars, "AWS_ACCESS_KEY_ID="+d.awsAccessKeyId)
 	}

@@ -49,3 +49,33 @@ func TestJuiceFSMountCommandKeepsPasswordOutOfArguments(t *testing.T) {
 		}
 	}
 }
+
+func TestS3MountCommandUsesExplicitPathStyleEndpoint(t *testing.T) {
+	dockerClient := &DockerClient{
+		awsEndpointUrl:     " http://minio:9000 ",
+		awsAccessKeyId:     "minioadmin",
+		awsSecretAccessKey: "minioadmin",
+		awsRegion:          "us-east-1",
+	}
+
+	cmd := dockerClient.getS3MountCmd(
+		context.Background(),
+		"daytona-volume-00000000-0000-0000-0000-000000000001",
+		"/tmp/daytona-volume-00000000-0000-0000-0000-000000000001",
+	)
+	wantArgs := []string{
+		"mount-s3",
+		"--allow-other",
+		"--allow-delete",
+		"--allow-overwrite",
+		"--file-mode", "0666",
+		"--dir-mode", "0777",
+		"--endpoint-url", "http://minio:9000",
+		"--force-path-style",
+		"daytona-volume-00000000-0000-0000-0000-000000000001",
+		"/tmp/daytona-volume-00000000-0000-0000-0000-000000000001",
+	}
+	if !slices.Equal(cmd.Args, wantArgs) {
+		t.Fatalf("unexpected S3 mount arguments: %#v", cmd.Args)
+	}
+}

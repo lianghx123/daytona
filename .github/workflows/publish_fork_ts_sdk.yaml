@@ -1,0 +1,268 @@
+name: Publish Fork TypeScript SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version. Leave empty to generate 0.0.0-juicefs.<run_number>'
+        required: false
+        type: string
+
+      npm_tag:
+        description: 'NPM dist tag'
+        required: false
+        default: 'juicefs'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+
+    env:
+      FORK_SCOPE: '@lianghx123'
+      NPM_TAG: ${{ inputs.npm_tag || 'juicefs' }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      #
+      # Reuse Daytona's existing toolchain setup.
+      #
+      - name: Setup Daytona toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          install-go: 'false'
+          go-cache: 'false'
+          install-python: 'false'
+          install-ruby: 'false'
+          install-java: 'false'
+          install-poetry: 'false'
+          install-swag: 'false'
+          run-poetry-install: 'false'
+          run-go-work-sync: 'false'
+          install-node: 'true'
+          run-yarn-install: 'true'
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="0.0.0-juicefs.${GITHUB_RUN_NUMBER}"
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid npm version: $VERSION"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing version: $VERSION"
+
+      - name: Validate publish configuration
+        shell: bash
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::error::NPM_TOKEN secret is not configured"
+            exit 1
+          fi
+
+          if [[ ! "$NPM_TAG" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]]; then
+            echo "::error::Invalid npm dist tag: $NPM_TAG"
+            exit 1
+          fi
+
+      - name: Build TypeScript SDK and clients
+        env:
+          NPM_PKG_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          yarn nx run-many \
+            --target=build \
+            --projects=sdk-typescript,runner-api-client
+
+      #
+      # The SDK build already builds these dependencies:
+      #
+      # dist/libs/api-client
+      # dist/libs/toolbox-api-client
+      # dist/libs/runner-api-client
+      # dist/libs/sdk-typescript
+      #
+
+      - name: Prepare fork packages
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+
+          const version = process.env.VERSION
+          const scope = process.env.FORK_SCOPE
+
+          function read(path) {
+            return JSON.parse(fs.readFileSync(path, 'utf8'))
+          }
+
+          function write(path, pkg) {
+            fs.writeFileSync(
+              path,
+              JSON.stringify(pkg, null, 2) + '\n'
+            )
+          }
+
+          //
+          // API client
+          //
+          const apiClientPath =
+            'dist/libs/api-client/package.json'
+
+          const apiClient = read(apiClientPath)
+
+          apiClient.name =
+            `${scope}/daytona-api-client`
+
+          apiClient.version = version
+
+          write(apiClientPath, apiClient)
+
+          //
+          // Toolbox API client
+          //
+          const toolboxClientPath =
+            'dist/libs/toolbox-api-client/package.json'
+
+          const toolboxClient = read(toolboxClientPath)
+
+          toolboxClient.name =
+            `${scope}/daytona-toolbox-api-client`
+
+          toolboxClient.version = version
+
+          write(toolboxClientPath, toolboxClient)
+
+          //
+          // Runner API client
+          //
+          const runnerClientPath =
+            'dist/libs/runner-api-client/package.json'
+
+          const runnerClient = read(runnerClientPath)
+
+          runnerClient.name =
+            `${scope}/daytona-runner-api-client`
+
+          runnerClient.version = version
+
+          // The source package uses prepare to compile itself. Publishing from
+          // dist must not attempt to compile again without the source tsconfigs.
+          if (runnerClient.scripts) {
+            delete runnerClient.scripts.prepare
+            delete runnerClient.scripts.build
+
+            if (Object.keys(runnerClient.scripts).length === 0) {
+              delete runnerClient.scripts
+            }
+          }
+
+          write(runnerClientPath, runnerClient)
+
+          //
+          // TypeScript SDK
+          //
+          const sdkPath =
+            'dist/libs/sdk-typescript/package.json'
+
+          const sdk = read(sdkPath)
+
+          sdk.name =
+            `${scope}/daytona-sdk`
+
+          sdk.version = version
+
+          sdk.dependencies ||= {}
+
+          //
+          // Keep the import names expected by the compiled SDK:
+          //
+          // import ... from '@daytona/api-client'
+          //
+          // but resolve them from our fork packages.
+          //
+          sdk.dependencies['@daytona/api-client'] =
+            `npm:${scope}/daytona-api-client@${version}`
+
+          sdk.dependencies['@daytona/toolbox-api-client'] =
+            `npm:${scope}/daytona-toolbox-api-client@${version}`
+
+          write(sdkPath, sdk)
+
+          console.log('Prepared packages:')
+          console.log(`  ${scope}/daytona-api-client@${version}`)
+          console.log(`  ${scope}/daytona-toolbox-api-client@${version}`)
+          console.log(`  ${scope}/daytona-runner-api-client@${version}`)
+          console.log(`  ${scope}/daytona-sdk@${version}`)
+          NODE
+
+      - name: Show package metadata
+        run: |
+          node -e "console.log(require('./dist/libs/api-client/package.json'))"
+          node -e "console.log(require('./dist/libs/toolbox-api-client/package.json'))"
+          node -e "console.log(require('./dist/libs/runner-api-client/package.json'))"
+          node -e "console.log(require('./dist/libs/sdk-typescript/package.json'))"
+
+      - name: Verify package contents
+        shell: bash
+        run: |
+          npm pack --dry-run --json ./dist/libs/api-client
+          npm pack --dry-run --json ./dist/libs/toolbox-api-client
+          npm pack --dry-run --json ./dist/libs/runner-api-client
+          npm pack --dry-run --json ./dist/libs/sdk-typescript
+
+      - name: Publish API client
+        working-directory: dist/libs/api-client
+        run: |
+          npm publish \
+            --tag "$NPM_TAG" \
+            --access public \
+            --registry https://registry.npmjs.org/ \
+            --//registry.npmjs.org/:_authToken="$NPM_TOKEN"
+
+      - name: Publish Toolbox API client
+        working-directory: dist/libs/toolbox-api-client
+        run: |
+          npm publish \
+            --tag "$NPM_TAG" \
+            --access public \
+            --registry https://registry.npmjs.org/ \
+            --//registry.npmjs.org/:_authToken="$NPM_TOKEN"
+
+      - name: Publish Runner API client
+        working-directory: dist/libs/runner-api-client
+        run: |
+          npm publish \
+            --tag "$NPM_TAG" \
+            --access public \
+            --registry https://registry.npmjs.org/ \
+            --//registry.npmjs.org/:_authToken="$NPM_TOKEN"
+
+      - name: Publish TypeScript SDK
+        working-directory: dist/libs/sdk-typescript
+        run: |
+          npm publish \
+            --tag "$NPM_TAG" \
+            --access public \
+            --registry https://registry.npmjs.org/ \
+            --//registry.npmjs.org/:_authToken="$NPM_TOKEN"

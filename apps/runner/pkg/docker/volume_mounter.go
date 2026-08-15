@@ -48,6 +48,14 @@ func (m *S3VolumeMounter) MountCommand(ctx context.Context, volume dto.VolumeDTO
 type JuiceFSVolumeMounter struct{ docker *DockerClient }
 
 const juiceFSEndpointProbeTimeout = 5 * time.Second
+const defaultJuiceFSCapacityGiB int64 = 50
+
+func juiceFSCapacityGiB(config *dto.JuiceFSVolumeSourceDTO) int64 {
+	if config == nil || config.CapacityGiB == 0 {
+		return defaultJuiceFSCapacityGiB
+	}
+	return config.CapacityGiB
+}
 
 var juiceFSDefaultPorts = map[string]int{
 	"redis": 6379, "rediss": 6379,
@@ -84,6 +92,9 @@ func (m *JuiceFSVolumeMounter) MountCommand(ctx context.Context, volume dto.Volu
 	config := volume.Backend.JuiceFS
 	if config.CacheSizeMiB < 0 {
 		return nil, fmt.Errorf("JUICEFS_RUNTIME_UNAVAILABLE: JuiceFS cache size must be a non-negative integer")
+	}
+	if config.CapacityGiB < 0 {
+		return nil, fmt.Errorf("JUICEFS_MOUNT_FAILED: JuiceFS capacity must be a positive integer")
 	}
 	metadataEndpoint, err := parseJuiceFSEndpoint("metadata", config.MetaURL, false)
 	if err != nil {

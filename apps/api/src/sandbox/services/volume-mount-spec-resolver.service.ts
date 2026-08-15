@@ -12,6 +12,7 @@ import { JuiceFSVolumeBackendConfig, Volume } from '../entities/volume.entity'
 import { VolumeBackendType } from '../enums/volume-backend-type.enum'
 import { VolumeState } from '../enums/volume-state.enum'
 import { VolumeCredentialService } from './volume-credential.service'
+import { DEFAULT_JUICEFS_CAPACITY_GIB } from '../dto/create-volume.dto'
 
 export interface RunnerVolumeBackendSpec {
   type: VolumeBackendType
@@ -62,7 +63,14 @@ export class VolumeMountSpecResolver {
         ...mount,
         backend:
           volume.backendType === VolumeBackendType.JUICEFS
-            ? { type: volume.backendType, juicefs: volume.backendConfig as JuiceFSVolumeBackendConfig }
+            ? {
+                type: volume.backendType,
+                juicefs: {
+                  ...(volume.backendConfig as JuiceFSVolumeBackendConfig),
+                  capacityGiB:
+                    (volume.backendConfig as JuiceFSVolumeBackendConfig).capacityGiB ?? DEFAULT_JUICEFS_CAPACITY_GIB,
+                },
+              }
             : { type: VolumeBackendType.MANAGED_S3 },
       }
     })

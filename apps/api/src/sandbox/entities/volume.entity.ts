@@ -12,6 +12,7 @@ export interface JuiceFSVolumeBackendConfig {
   metaUrl: string
   bucket?: string
   cacheSizeMiB: number
+  capacityGiB?: number
 }
 
 export type VolumeBackendConfig = Record<string, never> | JuiceFSVolumeBackendConfig

@@ -25,6 +25,7 @@ type VolumeBackendDto struct {
 	MetaUrl              *string           `json:"metaUrl,omitempty"`
 	Bucket               *string           `json:"bucket,omitempty"`
 	CacheSizeMiB         *float32          `json:"cacheSizeMiB,omitempty"`
+	CapacityGiB          *float32          `json:"capacityGiB,omitempty"`
 	AdditionalProperties map[string]interface{}
 }
 
@@ -168,6 +169,38 @@ func (o *VolumeBackendDto) SetCacheSizeMiB(v float32) {
 	o.CacheSizeMiB = &v
 }
 
+// GetCapacityGiB returns the CapacityGiB field value if set, zero value otherwise.
+func (o *VolumeBackendDto) GetCapacityGiB() float32 {
+	if o == nil || IsNil(o.CapacityGiB) {
+		var ret float32
+		return ret
+	}
+	return *o.CapacityGiB
+}
+
+// GetCapacityGiBOk returns a tuple with the CapacityGiB field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *VolumeBackendDto) GetCapacityGiBOk() (*float32, bool) {
+	if o == nil || IsNil(o.CapacityGiB) {
+		return nil, false
+	}
+	return o.CapacityGiB, true
+}
+
+// HasCapacityGiB returns a boolean if a field has been set.
+func (o *VolumeBackendDto) HasCapacityGiB() bool {
+	if o != nil && !IsNil(o.CapacityGiB) {
+		return true
+	}
+
+	return false
+}
+
+// SetCapacityGiB gets a reference to the given float32 and assigns it to the CapacityGiB field.
+func (o *VolumeBackendDto) SetCapacityGiB(v float32) {
+	o.CapacityGiB = &v
+}
+
 func (o VolumeBackendDto) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
@@ -187,6 +220,9 @@ func (o VolumeBackendDto) ToMap() (map[string]interface{}, error) {
 	}
 	if !IsNil(o.CacheSizeMiB) {
 		toSerialize["cacheSizeMiB"] = o.CacheSizeMiB
+	}
+	if !IsNil(o.CapacityGiB) {
+		toSerialize["capacityGiB"] = o.CapacityGiB
 	}
 
 	for key, value := range o.AdditionalProperties {
@@ -235,6 +271,7 @@ func (o *VolumeBackendDto) UnmarshalJSON(data []byte) (err error) {
 		delete(additionalProperties, "metaUrl")
 		delete(additionalProperties, "bucket")
 		delete(additionalProperties, "cacheSizeMiB")
+		delete(additionalProperties, "capacityGiB")
 		o.AdditionalProperties = additionalProperties
 	}
 

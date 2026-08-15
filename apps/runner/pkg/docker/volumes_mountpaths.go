@@ -348,8 +348,10 @@ func (d *DockerClient) getJuiceFSMountCmd(ctx context.Context, volume dto.Volume
 	args := []string{
 		"mount",
 		"-d",
+		"--hide-internal",
 		"--cache-dir", cacheDir,
 		"--cache-size", fmt.Sprintf("%d", config.CacheSizeMiB),
+		"--capacity", fmt.Sprintf("%d", juiceFSCapacityGiB(config)),
 	}
 	if bucket := strings.TrimSpace(config.Bucket); bucket != "" {
 		args = append(args, "--bucket", bucket)

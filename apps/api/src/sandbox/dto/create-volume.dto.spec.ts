@@ -5,7 +5,7 @@
 
 import { plainToInstance } from 'class-transformer'
 import { validate } from 'class-validator'
-import { CreateVolumeDto, DEFAULT_JUICEFS_CACHE_SIZE_MIB } from './create-volume.dto'
+import { CreateVolumeDto, DEFAULT_JUICEFS_CACHE_SIZE_MIB, DEFAULT_JUICEFS_CAPACITY_GIB } from './create-volume.dto'
 import { VolumeBackendType } from '../enums/volume-backend-type.enum'
 
 describe('CreateVolumeDto', () => {
@@ -23,6 +23,7 @@ describe('CreateVolumeDto', () => {
         metaUrl: 'redis://metadata:6379/1',
         bucket: 'https://storage.example.com/juicefs-data?tls-insecure-skip-verify=true',
         cacheSizeMiB: DEFAULT_JUICEFS_CACHE_SIZE_MIB,
+        capacityGiB: DEFAULT_JUICEFS_CAPACITY_GIB,
         credential: { metaPassword: 'secret' },
       },
     })
@@ -36,6 +37,15 @@ describe('CreateVolumeDto', () => {
     const dto = plainToInstance(CreateVolumeDto, {
       name: 'juicefs-volume',
       backend: { type: VolumeBackendType.JUICEFS, metaUrl: 'redis://metadata:6379/1', cacheSizeMiB },
+    })
+
+    expect(await validate(dto)).not.toHaveLength(0)
+  })
+
+  it.each([0, -1, 1.5])('rejects invalid capacity %s', async (capacityGiB) => {
+    const dto = plainToInstance(CreateVolumeDto, {
+      name: 'juicefs-volume',
+      backend: { type: VolumeBackendType.JUICEFS, metaUrl: 'redis://metadata:6379/1', capacityGiB },
     })
 
     expect(await validate(dto)).not.toHaveLength(0)

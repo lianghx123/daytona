@@ -2116,6 +2116,10 @@ const docTemplate = `{
                     "type": "integer",
                     "minimum": 0
                 },
+                "capacityGiB": {
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "metaUrl": {
                     "type": "string"
                 }

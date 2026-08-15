@@ -78,6 +78,7 @@ type VolumeBackendDetails = {
   metaUrl?: string
   bucket?: string
   cacheSizeMiB?: number
+  capacityGiB?: number
 }
 
 type VolumeWithBackend = VolumeDto & {
@@ -611,6 +612,8 @@ function VolumeDetailsDialog({
               <dd className="break-all font-mono">{backend.bucket ?? 'Default from JuiceFS metadata'}</dd>
               <dt className="text-muted-foreground">Runner cache</dt>
               <dd>{backend.cacheSizeMiB ?? 10240} MiB</dd>
+              <dt className="text-muted-foreground">Sandbox capacity</dt>
+              <dd>{backend.capacityGiB ?? 50} GiB</dd>
             </>
           ) : null}
         </dl>

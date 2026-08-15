@@ -34,6 +34,7 @@ const formSchema = z
     metaUrl: z.string(),
     bucket: z.string(),
     cacheSizeMiB: z.string(),
+    capacityGiB: z.string(),
     metaPassword: z.string(),
   })
   .superRefine((value, context) => {
@@ -72,6 +73,11 @@ const formSchema = z
     if (!Number.isInteger(cacheSize) || cacheSize < 0) {
       context.addIssue({ code: 'custom', path: ['cacheSizeMiB'], message: 'Cache size must be a non-negative integer' })
     }
+
+    const capacity = Number(value.capacityGiB)
+    if (!Number.isInteger(capacity) || capacity < 1) {
+      context.addIssue({ code: 'custom', path: ['capacityGiB'], message: 'Capacity must be a positive integer' })
+    }
   })
 
 type FormValues = z.infer<typeof formSchema>
@@ -82,6 +88,7 @@ const defaultValues: FormValues = {
   metaUrl: '',
   bucket: '',
   cacheSizeMiB: '10240',
+  capacityGiB: '50',
   metaPassword: '',
 }
 
@@ -137,6 +144,7 @@ export const CreateVolumeSheet = ({
                     metaUrl: value.metaUrl.trim(),
                     bucket: value.bucket.trim() || undefined,
                     cacheSizeMiB: Number(value.cacheSizeMiB),
+                    capacityGiB: Number(value.capacityGiB),
                     credential: value.metaPassword ? { metaPassword: value.metaPassword } : undefined,
                   }
                 : { type: 'managed_s3' },
@@ -303,6 +311,28 @@ export const CreateVolumeSheet = ({
                                 onBlur={field.handleBlur}
                                 onChange={(event) => field.handleChange(event.target.value)}
                               />
+                              {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                            </Field>
+                          )
+                        }}
+                      </form.Field>
+                      <form.Field name="capacityGiB">
+                        {(field) => {
+                          const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                          return (
+                            <Field data-invalid={isInvalid}>
+                              <FieldLabel htmlFor={field.name}>Volume Capacity (GiB)</FieldLabel>
+                              <Input
+                                aria-invalid={isInvalid}
+                                id={field.name}
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={field.state.value}
+                                onBlur={field.handleBlur}
+                                onChange={(event) => field.handleChange(event.target.value)}
+                              />
+                              <FieldDescription>Capacity reported to sandboxes. Defaults to 50 GiB.</FieldDescription>
                               {isInvalid && <FieldError errors={field.state.meta.errors} />}
                             </Field>
                           )

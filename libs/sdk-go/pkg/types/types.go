@@ -151,6 +151,7 @@ type VolumeBackend struct {
 	MetaURL      *string  `json:"metaUrl,omitempty"`
 	Bucket       *string  `json:"bucket,omitempty"`
 	CacheSizeMiB *float32 `json:"cacheSizeMiB,omitempty"`
+	CapacityGiB  *float32 `json:"capacityGiB,omitempty"`
 }
 
 // Snapshot represents a Daytona snapshot

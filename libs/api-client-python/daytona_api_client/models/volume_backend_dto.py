@@ -20,6 +20,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional, Union
+from typing_extensions import Annotated
 from daytona_api_client.models.volume_backend_type import VolumeBackendType
 from pydantic import TypeAdapter
 from typing import Optional, Set
@@ -35,8 +36,9 @@ class VolumeBackendDto(BaseModel):
     meta_url: Optional[StrictStr] = Field(default=None, serialization_alias="metaUrl")
     bucket: Optional[StrictStr] = None
     cache_size_mi_b: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, serialization_alias="cacheSizeMiB")
+    capacity_gi_b: Optional[Union[Annotated[float, Field(strict=True, ge=1)], Annotated[int, Field(strict=True, ge=1)]]] = Field(default=None, serialization_alias="capacityGiB")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["type", "metaUrl", "bucket", "cacheSizeMiB"]
+    __properties: ClassVar[List[str]] = ["type", "metaUrl", "bucket", "cacheSizeMiB", "capacityGiB"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -98,7 +100,8 @@ class VolumeBackendDto(BaseModel):
             "type": obj.get("type"),
             "meta_url": obj.get("metaUrl"),
             "bucket": obj.get("bucket"),
-            "cache_size_mi_b": obj.get("cacheSizeMiB")
+            "cache_size_mi_b": obj.get("cacheSizeMiB"),
+            "capacity_gi_b": obj.get("capacityGiB")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

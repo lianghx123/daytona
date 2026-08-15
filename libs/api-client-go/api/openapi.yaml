@@ -14294,6 +14294,7 @@ components:
         metaUrl: redis://juicefs-meta:6379/12
         type: ""
         cacheSizeMiB: 10240
+        capacityGiB: 50
       properties:
         type:
           allOf:
@@ -14306,6 +14307,10 @@ components:
           type: string
         cacheSizeMiB:
           example: 10240
+          type: number
+        capacityGiB:
+          example: 50
+          minimum: 1
           type: number
       required:
       - type
@@ -14328,6 +14333,7 @@ components:
           metaUrl: redis://juicefs-meta:6379/12
           type: ""
           cacheSizeMiB: 10240
+          capacityGiB: 50
         id: vol-12345678
         state: ready
         updatedAt: 2023-01-01T00:00:00.000Z
@@ -14405,6 +14411,11 @@ components:
         cacheSizeMiB:
           default: 10240
           minimum: 0
+          type: number
+        capacityGiB:
+          default: 50
+          description: "Capacity reported by JuiceFS to mounted sandboxes, in GiB."
+          minimum: 1
           type: number
         credential:
           allOf:

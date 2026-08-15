@@ -28,7 +28,7 @@ describe('VolumeMountSpecResolver', () => {
       {
         volumeId: volume.id,
         mountPath: '/data',
-        backend: { type: VolumeBackendType.JUICEFS, juicefs: volume.backendConfig },
+        backend: { type: VolumeBackendType.JUICEFS, juicefs: { ...volume.backendConfig, capacityGiB: 50 } },
       },
     ])
     expect(result.volumeMountCredentials).toEqual({ [volume.id]: { juicefs: { metaPassword: 'secret' } } })

@@ -24,8 +24,10 @@ type CreateVolumeBackendDto struct {
 	Type    VolumeBackendType `json:"type"`
 	MetaUrl *string           `json:"metaUrl,omitempty"`
 	// Optional object storage URL passed to JuiceFS mount as --bucket.
-	Bucket               *string                     `json:"bucket,omitempty"`
-	CacheSizeMiB         *float32                    `json:"cacheSizeMiB,omitempty"`
+	Bucket       *string  `json:"bucket,omitempty"`
+	CacheSizeMiB *float32 `json:"cacheSizeMiB,omitempty"`
+	// Capacity reported by JuiceFS to mounted sandboxes, in GiB.
+	CapacityGiB          *float32                    `json:"capacityGiB,omitempty"`
 	Credential           *JuiceFSVolumeCredentialDto `json:"credential,omitempty"`
 	AdditionalProperties map[string]interface{}
 }
@@ -41,6 +43,8 @@ func NewCreateVolumeBackendDto(type_ VolumeBackendType) *CreateVolumeBackendDto 
 	this.Type = type_
 	var cacheSizeMiB float32 = 10240
 	this.CacheSizeMiB = &cacheSizeMiB
+	var capacityGiB float32 = 50
+	this.CapacityGiB = &capacityGiB
 	return &this
 }
 
@@ -51,6 +55,8 @@ func NewCreateVolumeBackendDtoWithDefaults() *CreateVolumeBackendDto {
 	this := CreateVolumeBackendDto{}
 	var cacheSizeMiB float32 = 10240
 	this.CacheSizeMiB = &cacheSizeMiB
+	var capacityGiB float32 = 50
+	this.CapacityGiB = &capacityGiB
 	return &this
 }
 
@@ -174,6 +180,38 @@ func (o *CreateVolumeBackendDto) SetCacheSizeMiB(v float32) {
 	o.CacheSizeMiB = &v
 }
 
+// GetCapacityGiB returns the CapacityGiB field value if set, zero value otherwise.
+func (o *CreateVolumeBackendDto) GetCapacityGiB() float32 {
+	if o == nil || IsNil(o.CapacityGiB) {
+		var ret float32
+		return ret
+	}
+	return *o.CapacityGiB
+}
+
+// GetCapacityGiBOk returns a tuple with the CapacityGiB field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *CreateVolumeBackendDto) GetCapacityGiBOk() (*float32, bool) {
+	if o == nil || IsNil(o.CapacityGiB) {
+		return nil, false
+	}
+	return o.CapacityGiB, true
+}
+
+// HasCapacityGiB returns a boolean if a field has been set.
+func (o *CreateVolumeBackendDto) HasCapacityGiB() bool {
+	if o != nil && !IsNil(o.CapacityGiB) {
+		return true
+	}
+
+	return false
+}
+
+// SetCapacityGiB gets a reference to the given float32 and assigns it to the CapacityGiB field.
+func (o *CreateVolumeBackendDto) SetCapacityGiB(v float32) {
+	o.CapacityGiB = &v
+}
+
 // GetCredential returns the Credential field value if set, zero value otherwise.
 func (o *CreateVolumeBackendDto) GetCredential() JuiceFSVolumeCredentialDto {
 	if o == nil || IsNil(o.Credential) {
@@ -226,6 +264,9 @@ func (o CreateVolumeBackendDto) ToMap() (map[string]interface{}, error) {
 	if !IsNil(o.CacheSizeMiB) {
 		toSerialize["cacheSizeMiB"] = o.CacheSizeMiB
 	}
+	if !IsNil(o.CapacityGiB) {
+		toSerialize["capacityGiB"] = o.CapacityGiB
+	}
 	if !IsNil(o.Credential) {
 		toSerialize["credential"] = o.Credential
 	}
@@ -276,6 +317,7 @@ func (o *CreateVolumeBackendDto) UnmarshalJSON(data []byte) (err error) {
 		delete(additionalProperties, "metaUrl")
 		delete(additionalProperties, "bucket")
 		delete(additionalProperties, "cacheSizeMiB")
+		delete(additionalProperties, "capacityGiB")
 		delete(additionalProperties, "credential")
 		o.AdditionalProperties = additionalProperties
 	}

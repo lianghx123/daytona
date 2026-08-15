@@ -431,6 +431,9 @@ definitions:
       cacheSizeMiB:
         minimum: 0
         type: integer
+      capacityGiB:
+        minimum: 0
+        type: integer
       metaUrl:
         type: string
     required:

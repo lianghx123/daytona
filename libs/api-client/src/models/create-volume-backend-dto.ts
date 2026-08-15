@@ -28,5 +28,9 @@ export interface CreateVolumeBackendDto {
      */
     'bucket'?: string;
     'cacheSizeMiB'?: number;
+    /**
+     * Capacity reported by JuiceFS to mounted sandboxes, in GiB.
+     */
+    'capacityGiB'?: number;
     'credential'?: JuiceFSVolumeCredentialDto;
 }

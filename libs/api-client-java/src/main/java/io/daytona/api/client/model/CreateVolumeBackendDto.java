@@ -73,6 +73,11 @@ public class CreateVolumeBackendDto {
   @javax.annotation.Nullable
   private BigDecimal cacheSizeMiB = new BigDecimal("10240");
 
+  public static final String SERIALIZED_NAME_CAPACITY_GI_B = "capacityGiB";
+  @SerializedName(SERIALIZED_NAME_CAPACITY_GI_B)
+  @javax.annotation.Nullable
+  private BigDecimal capacityGiB = new BigDecimal("50");
+
   public static final String SERIALIZED_NAME_CREDENTIAL = "credential";
   @SerializedName(SERIALIZED_NAME_CREDENTIAL)
   @javax.annotation.Nullable
@@ -158,6 +163,26 @@ public class CreateVolumeBackendDto {
   }
 
 
+  public CreateVolumeBackendDto capacityGiB(@javax.annotation.Nullable BigDecimal capacityGiB) {
+    this.capacityGiB = capacityGiB;
+    return this;
+  }
+
+  /**
+   * Capacity reported by JuiceFS to mounted sandboxes, in GiB.
+   * minimum: 1
+   * @return capacityGiB
+   */
+  @javax.annotation.Nullable
+  public BigDecimal getCapacityGiB() {
+    return capacityGiB;
+  }
+
+  public void setCapacityGiB(@javax.annotation.Nullable BigDecimal capacityGiB) {
+    this.capacityGiB = capacityGiB;
+  }
+
+
   public CreateVolumeBackendDto credential(@javax.annotation.Nullable JuiceFSVolumeCredentialDto credential) {
     this.credential = credential;
     return this;
@@ -235,13 +260,14 @@ public class CreateVolumeBackendDto {
         Objects.equals(this.metaUrl, createVolumeBackendDto.metaUrl) &&
         Objects.equals(this.bucket, createVolumeBackendDto.bucket) &&
         Objects.equals(this.cacheSizeMiB, createVolumeBackendDto.cacheSizeMiB) &&
+        Objects.equals(this.capacityGiB, createVolumeBackendDto.capacityGiB) &&
         Objects.equals(this.credential, createVolumeBackendDto.credential)&&
         Objects.equals(this.additionalProperties, createVolumeBackendDto.additionalProperties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, metaUrl, bucket, cacheSizeMiB, credential, additionalProperties);
+    return Objects.hash(type, metaUrl, bucket, cacheSizeMiB, capacityGiB, credential, additionalProperties);
   }
 
   @Override
@@ -252,6 +278,7 @@ public class CreateVolumeBackendDto {
     sb.append("    metaUrl: ").append(toIndentedString(metaUrl)).append("\n");
     sb.append("    bucket: ").append(toIndentedString(bucket)).append("\n");
     sb.append("    cacheSizeMiB: ").append(toIndentedString(cacheSizeMiB)).append("\n");
+    sb.append("    capacityGiB: ").append(toIndentedString(capacityGiB)).append("\n");
     sb.append("    credential: ").append(toIndentedString(credential)).append("\n");
     sb.append("    additionalProperties: ").append(toIndentedString(additionalProperties)).append("\n");
     sb.append("}");
@@ -272,7 +299,7 @@ public class CreateVolumeBackendDto {
 
   static {
     // a set of all properties/fields (JSON key names)
-    openapiFields = new HashSet<String>(Arrays.asList("type", "metaUrl", "bucket", "cacheSizeMiB", "credential"));
+    openapiFields = new HashSet<String>(Arrays.asList("type", "metaUrl", "bucket", "cacheSizeMiB", "capacityGiB", "credential"));
 
     // a set of required properties/fields (JSON key names)
     openapiRequiredFields = new HashSet<String>(Arrays.asList("type"));

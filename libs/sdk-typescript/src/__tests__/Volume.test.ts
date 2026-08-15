@@ -72,6 +72,7 @@ describe('VolumeService', () => {
       metaUrl: 'redis://metadata:6379/1',
       bucket: 'https://storage.example.com/juicefs-data',
       cacheSizeMiB: 2048,
+      capacityGiB: 100,
       credential: { metaPassword: 'secret' },
     } as never
 

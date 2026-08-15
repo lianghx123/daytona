@@ -10,6 +10,7 @@ import { IsSafeDisplayString } from '../../common/validators'
 import { VolumeBackendType } from '../enums/volume-backend-type.enum'
 
 export const DEFAULT_JUICEFS_CACHE_SIZE_MIB = 10240
+export const DEFAULT_JUICEFS_CAPACITY_GIB = 50
 
 export class JuiceFSVolumeCredentialDto {
   @ApiPropertyOptional({ writeOnly: true, description: 'Password for the JuiceFS metadata engine.' })
@@ -45,6 +46,17 @@ export class CreateVolumeBackendDto {
   @IsInt()
   @Min(0)
   cacheSizeMiB?: number
+
+  @ApiPropertyOptional({
+    default: DEFAULT_JUICEFS_CAPACITY_GIB,
+    minimum: 1,
+    description: 'Capacity reported by JuiceFS to mounted sandboxes, in GiB.',
+  })
+  @ValidateIf((value: CreateVolumeBackendDto) => value.type === VolumeBackendType.JUICEFS)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  capacityGiB?: number
 
   @ApiPropertyOptional({ type: JuiceFSVolumeCredentialDto, writeOnly: true })
   @ValidateIf((value: CreateVolumeBackendDto) => value.type === VolumeBackendType.JUICEFS)

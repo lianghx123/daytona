@@ -9,6 +9,7 @@ import { VolumeState } from '../enums/volume-state.enum'
 import { Volume } from '../entities/volume.entity'
 import { VolumeBackendType } from '../enums/volume-backend-type.enum'
 import { VolumeLifecycle } from '../enums/volume-lifecycle.enum'
+import { DEFAULT_JUICEFS_CAPACITY_GIB } from './create-volume.dto'
 
 export class VolumeBackendDto {
   @ApiProperty({ enum: VolumeBackendType, enumName: 'VolumeBackendType' })
@@ -22,6 +23,9 @@ export class VolumeBackendDto {
 
   @ApiPropertyOptional({ example: 10240 })
   cacheSizeMiB?: number
+
+  @ApiPropertyOptional({ example: DEFAULT_JUICEFS_CAPACITY_GIB, minimum: 1 })
+  capacityGiB?: number
 }
 
 export class VolumeDto {
@@ -97,6 +101,10 @@ export class VolumeDto {
               metaUrl: 'metaUrl' in volume.backendConfig ? volume.backendConfig.metaUrl : undefined,
               bucket: 'bucket' in volume.backendConfig ? volume.backendConfig.bucket : undefined,
               cacheSizeMiB: 'cacheSizeMiB' in volume.backendConfig ? volume.backendConfig.cacheSizeMiB : undefined,
+              capacityGiB:
+                'capacityGiB' in volume.backendConfig
+                  ? volume.backendConfig.capacityGiB
+                  : DEFAULT_JUICEFS_CAPACITY_GIB,
             }
           : { type: VolumeBackendType.MANAGED_S3 },
       lifecycle: volume.lifecycle,

@@ -22,4 +22,5 @@ export interface VolumeBackendDto {
     'metaUrl'?: string;
     'bucket'?: string;
     'cacheSizeMiB'?: number;
+    'capacityGiB'?: number;
 }

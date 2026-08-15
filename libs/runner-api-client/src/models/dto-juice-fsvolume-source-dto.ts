@@ -17,5 +17,6 @@
 export interface DtoJuiceFSVolumeSourceDTO {
     'bucket'?: string;
     'cacheSizeMiB'?: number;
+    'capacityGiB'?: number;
     'metaUrl': string;
 }

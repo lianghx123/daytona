@@ -31,8 +31,10 @@ func TestJuiceFSMountCommandKeepsPasswordOutOfArguments(t *testing.T) {
 	cmd := (&DockerClient{}).getJuiceFSMountCmd(context.Background(), volume, credential, "/mnt/volume")
 	wantArgs := []string{
 		"juicefs", "mount", "-d",
+		"--hide-internal",
 		"--cache-dir", "/var/lib/daytona/juicefs-cache/00000000-0000-0000-0000-000000000001",
 		"--cache-size", "2048",
+		"--capacity", "50",
 		"--bucket", "https://minio.internal:9000/juicefs-data",
 		"redis://metadata:6379/1", "/mnt/volume",
 	}
@@ -49,6 +51,24 @@ func TestJuiceFSMountCommandKeepsPasswordOutOfArguments(t *testing.T) {
 		if arg == "--file-mode" || arg == "--dir-mode" || arg == "--subdir" {
 			t.Fatalf("JuiceFS command must not override POSIX permissions or use --subdir: %s", arg)
 		}
+	}
+}
+
+func TestJuiceFSMountCommandUsesConfiguredCapacity(t *testing.T) {
+	volume := dto.VolumeDTO{
+		VolumeId: "00000000-0000-0000-0000-000000000001",
+		Backend: &dto.VolumeBackendDTO{Type: dto.VolumeBackendJuiceFS, JuiceFS: &dto.JuiceFSVolumeSourceDTO{
+			MetaURL: "redis://metadata:6379/1", CapacityGiB: 125,
+		}},
+	}
+
+	cmd := (&DockerClient{}).getJuiceFSMountCmd(context.Background(), volume, nil, "/mnt/volume")
+	capacityIndex := slices.Index(cmd.Args, "--capacity")
+	if capacityIndex < 0 || capacityIndex+1 >= len(cmd.Args) || cmd.Args[capacityIndex+1] != "125" {
+		t.Fatalf("configured capacity was not passed to JuiceFS: %#v", cmd.Args)
+	}
+	if !slices.Contains(cmd.Args, "--hide-internal") {
+		t.Fatalf("JuiceFS internal entries are not hidden: %#v", cmd.Args)
 	}
 }
 

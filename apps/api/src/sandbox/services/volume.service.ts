@@ -25,7 +25,7 @@ import { SandboxDesiredState } from '../enums/sandbox-desired-state.enum'
 import { DataSource } from 'typeorm'
 import { VolumeBackendType } from '../enums/volume-backend-type.enum'
 import { VolumeLifecycle } from '../enums/volume-lifecycle.enum'
-import { DEFAULT_JUICEFS_CACHE_SIZE_MIB } from '../dto/create-volume.dto'
+import { DEFAULT_JUICEFS_CACHE_SIZE_MIB, DEFAULT_JUICEFS_CAPACITY_GIB } from '../dto/create-volume.dto'
 import { VolumeCredentialService } from './volume-credential.service'
 import { parseJuiceFSEndpoint, probeJuiceFSEndpoint } from '../utils/juicefs-connectivity.util'
 
@@ -108,6 +108,7 @@ export class VolumeService {
           metaUrl: metadataEndpoint.url,
           ...(bucketEndpoint ? { bucket: bucketEndpoint.url } : {}),
           cacheSizeMiB: createVolumeDto.backend?.cacheSizeMiB ?? DEFAULT_JUICEFS_CACHE_SIZE_MIB,
+          capacityGiB: createVolumeDto.backend?.capacityGiB ?? DEFAULT_JUICEFS_CAPACITY_GIB,
         }
       }
 

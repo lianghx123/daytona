@@ -24,6 +24,9 @@ module DaytonaApiClient
 
     attr_accessor :cache_size_mi_b
 
+    # Capacity reported by JuiceFS to mounted sandboxes, in GiB.
+    attr_accessor :capacity_gi_b
+
     attr_accessor :credential
 
     class EnumAttributeValidator
@@ -55,6 +58,7 @@ module DaytonaApiClient
         :'meta_url' => :'metaUrl',
         :'bucket' => :'bucket',
         :'cache_size_mi_b' => :'cacheSizeMiB',
+        :'capacity_gi_b' => :'capacityGiB',
         :'credential' => :'credential'
       }
     end
@@ -76,6 +80,7 @@ module DaytonaApiClient
         :'meta_url' => :'String',
         :'bucket' => :'String',
         :'cache_size_mi_b' => :'Float',
+        :'capacity_gi_b' => :'Float',
         :'credential' => :'JuiceFSVolumeCredentialDto'
       }
     end
@@ -122,6 +127,12 @@ module DaytonaApiClient
         self.cache_size_mi_b = 10240
       end
 
+      if attributes.key?(:'capacity_gi_b')
+        self.capacity_gi_b = attributes[:'capacity_gi_b']
+      else
+        self.capacity_gi_b = 50
+      end
+
       if attributes.key?(:'credential')
         self.credential = attributes[:'credential']
       end
@@ -140,6 +151,10 @@ module DaytonaApiClient
         invalid_properties.push('invalid value for "cache_size_mi_b", must be greater than or equal to 0.')
       end
 
+      if !@capacity_gi_b.nil? && @capacity_gi_b < 1
+        invalid_properties.push('invalid value for "capacity_gi_b", must be greater than or equal to 1.')
+      end
+
       invalid_properties
     end
 
@@ -149,6 +164,7 @@ module DaytonaApiClient
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @type.nil?
       return false if !@cache_size_mi_b.nil? && @cache_size_mi_b < 0
+      return false if !@capacity_gi_b.nil? && @capacity_gi_b < 1
       true
     end
 
@@ -176,6 +192,20 @@ module DaytonaApiClient
       @cache_size_mi_b = cache_size_mi_b
     end
 
+    # Custom attribute writer method with validation
+    # @param [Object] capacity_gi_b Value to be assigned
+    def capacity_gi_b=(capacity_gi_b)
+      if capacity_gi_b.nil?
+        fail ArgumentError, 'capacity_gi_b cannot be nil'
+      end
+
+      if capacity_gi_b < 1
+        fail ArgumentError, 'invalid value for "capacity_gi_b", must be greater than or equal to 1.'
+      end
+
+      @capacity_gi_b = capacity_gi_b
+    end
+
     # Checks equality by comparing each attribute.
     # @param [Object] Object to be compared
     def ==(o)
@@ -185,6 +215,7 @@ module DaytonaApiClient
           meta_url == o.meta_url &&
           bucket == o.bucket &&
           cache_size_mi_b == o.cache_size_mi_b &&
+          capacity_gi_b == o.capacity_gi_b &&
           credential == o.credential
     end
 
@@ -197,7 +228,7 @@ module DaytonaApiClient
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [type, meta_url, bucket, cache_size_mi_b, credential].hash
+      [type, meta_url, bucket, cache_size_mi_b, capacity_gi_b, credential].hash
     end
 
     # Builds the object from hash

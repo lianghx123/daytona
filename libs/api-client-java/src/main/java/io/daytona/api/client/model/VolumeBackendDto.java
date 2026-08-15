@@ -72,6 +72,11 @@ public class VolumeBackendDto {
   @javax.annotation.Nullable
   private BigDecimal cacheSizeMiB;
 
+  public static final String SERIALIZED_NAME_CAPACITY_GI_B = "capacityGiB";
+  @SerializedName(SERIALIZED_NAME_CAPACITY_GI_B)
+  @javax.annotation.Nullable
+  private BigDecimal capacityGiB;
+
   public VolumeBackendDto() {
   }
 
@@ -150,6 +155,26 @@ public class VolumeBackendDto {
     this.cacheSizeMiB = cacheSizeMiB;
   }
 
+
+  public VolumeBackendDto capacityGiB(@javax.annotation.Nullable BigDecimal capacityGiB) {
+    this.capacityGiB = capacityGiB;
+    return this;
+  }
+
+  /**
+   * Get capacityGiB
+   * minimum: 1
+   * @return capacityGiB
+   */
+  @javax.annotation.Nullable
+  public BigDecimal getCapacityGiB() {
+    return capacityGiB;
+  }
+
+  public void setCapacityGiB(@javax.annotation.Nullable BigDecimal capacityGiB) {
+    this.capacityGiB = capacityGiB;
+  }
+
   /**
    * A container for additional, undeclared properties.
    * This is a holder for any undeclared properties as specified with
@@ -208,13 +233,14 @@ public class VolumeBackendDto {
     return Objects.equals(this.type, volumeBackendDto.type) &&
         Objects.equals(this.metaUrl, volumeBackendDto.metaUrl) &&
         Objects.equals(this.bucket, volumeBackendDto.bucket) &&
-        Objects.equals(this.cacheSizeMiB, volumeBackendDto.cacheSizeMiB)&&
+        Objects.equals(this.cacheSizeMiB, volumeBackendDto.cacheSizeMiB) &&
+        Objects.equals(this.capacityGiB, volumeBackendDto.capacityGiB)&&
         Objects.equals(this.additionalProperties, volumeBackendDto.additionalProperties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, metaUrl, bucket, cacheSizeMiB, additionalProperties);
+    return Objects.hash(type, metaUrl, bucket, cacheSizeMiB, capacityGiB, additionalProperties);
   }
 
   @Override
@@ -225,6 +251,7 @@ public class VolumeBackendDto {
     sb.append("    metaUrl: ").append(toIndentedString(metaUrl)).append("\n");
     sb.append("    bucket: ").append(toIndentedString(bucket)).append("\n");
     sb.append("    cacheSizeMiB: ").append(toIndentedString(cacheSizeMiB)).append("\n");
+    sb.append("    capacityGiB: ").append(toIndentedString(capacityGiB)).append("\n");
     sb.append("    additionalProperties: ").append(toIndentedString(additionalProperties)).append("\n");
     sb.append("}");
     return sb.toString();
@@ -244,7 +271,7 @@ public class VolumeBackendDto {
 
   static {
     // a set of all properties/fields (JSON key names)
-    openapiFields = new HashSet<String>(Arrays.asList("type", "metaUrl", "bucket", "cacheSizeMiB"));
+    openapiFields = new HashSet<String>(Arrays.asList("type", "metaUrl", "bucket", "cacheSizeMiB", "capacityGiB"));
 
     // a set of required properties/fields (JSON key names)
     openapiRequiredFields = new HashSet<String>(Arrays.asList("type"));

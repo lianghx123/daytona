@@ -22,6 +22,7 @@ describe('VolumeDto', () => {
         metaUrl: 'redis://metadata:6379/1',
         bucket: 'https://storage.example.com/juicefs-data',
         cacheSizeMiB: 2048,
+        capacityGiB: 125,
       },
       credentialRef: '00000000-0000-0000-0000-000000000003',
       createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -35,7 +36,24 @@ describe('VolumeDto', () => {
       metaUrl: 'redis://metadata:6379/1',
       bucket: 'https://storage.example.com/juicefs-data',
       cacheSizeMiB: 2048,
+      capacityGiB: 125,
     })
     expect(JSON.stringify(dto)).not.toContain('credential')
+  })
+
+  it('defaults capacity for historical JuiceFS backend configuration', () => {
+    const volume = Object.assign(new Volume(), {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'legacy-juicefs-volume',
+      organizationId: '00000000-0000-0000-0000-000000000002',
+      state: VolumeState.READY,
+      backendType: VolumeBackendType.JUICEFS,
+      lifecycle: VolumeLifecycle.EXTERNAL,
+      backendConfig: { metaUrl: 'redis://metadata:6379/1', cacheSizeMiB: 2048 },
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    })
+
+    expect(VolumeDto.fromVolume(volume).backend.capacityGiB).toBe(50)
   })
 })

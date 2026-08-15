@@ -12,6 +12,7 @@ type JuiceFSVolumeSourceDTO struct {
 	MetaURL      string `json:"metaUrl" validate:"required"`
 	Bucket       string `json:"bucket,omitempty"`
 	CacheSizeMiB int64  `json:"cacheSizeMiB,omitempty" validate:"min=0"`
+	CapacityGiB  int64  `json:"capacityGiB,omitempty" validate:"min=0"`
 }
 
 type VolumeBackendDTO struct {

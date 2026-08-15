@@ -32,6 +32,15 @@ const (
 // The Start path reads it to skip the daytona daemon exec/wait that regular sandboxes need.
 const androidDeviceLabel = "daytona.android_device"
 
+// sandboxMountProtectionSeccompProfile preserves the current privileged
+// sandbox behavior while preventing sandbox processes from detaching
+// Runner-managed volume mounts from their mount namespace.
+const sandboxMountProtectionSeccompProfile = `{"defaultAction":"SCMP_ACT_ALLOW","syscalls":[{"names":["umount","umount2"],"action":"SCMP_ACT_ERRNO","errnoRet":1}]}`
+
+func sandboxMountProtectionSecurityOpt() []string {
+	return []string{"seccomp=" + sandboxMountProtectionSeccompProfile}
+}
+
 // isAndroidDeviceContainer reports whether an already-created container was provisioned for
 // an android-device sandbox, based on the label written at create time.
 func isAndroidDeviceContainer(c *container.InspectResponse) bool {
@@ -205,6 +214,9 @@ func (d *DockerClient) getContainerHostConfig(sandboxDto dto.CreateSandboxDTO, v
 		Privileged: gpuIndex == nil,
 		Binds:      binds,
 	}
+	if len(volumeMountPathBinds) > 0 {
+		hostConfig.SecurityOpt = sandboxMountProtectionSecurityOpt()
+	}
 
 	if sandboxDto.OtelEndpoint != nil && strings.Contains(*sandboxDto.OtelEndpoint, "host.docker.internal") {
 		hostConfig.ExtraHosts = []string{
@@ -298,6 +310,9 @@ func (d *DockerClient) getAndroidDeviceHostConfig(sandboxDto dto.CreateSandboxDT
 	hostConfig := &container.HostConfig{
 		Privileged: false,
 		Binds:      append([]string{}, volumeMountPathBinds...),
+	}
+	if len(volumeMountPathBinds) > 0 {
+		hostConfig.SecurityOpt = sandboxMountProtectionSecurityOpt()
 	}
 
 	if sandboxDto.OtelEndpoint != nil && strings.Contains(*sandboxDto.OtelEndpoint, "host.docker.internal") {

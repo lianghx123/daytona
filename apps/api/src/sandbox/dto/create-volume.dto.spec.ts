@@ -21,12 +21,14 @@ describe('CreateVolumeDto', () => {
       backend: {
         type: VolumeBackendType.JUICEFS,
         metaUrl: 'redis://metadata:6379/1',
+        bucket: 'https://storage.example.com/juicefs-data?tls-insecure-skip-verify=true',
         cacheSizeMiB: DEFAULT_JUICEFS_CACHE_SIZE_MIB,
         credential: { metaPassword: 'secret' },
       },
     })
 
     expect(await validate(dto)).toHaveLength(0)
+    expect(dto.backend?.bucket).toContain('storage.example.com')
     expect(dto.backend?.credential?.metaPassword).toBe('secret')
   })
 

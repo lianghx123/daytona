@@ -21,8 +21,10 @@ var _ MappedNullable = &CreateVolumeBackendDto{}
 
 // CreateVolumeBackendDto struct for CreateVolumeBackendDto
 type CreateVolumeBackendDto struct {
-	Type                 VolumeBackendType           `json:"type"`
-	MetaUrl              *string                     `json:"metaUrl,omitempty"`
+	Type    VolumeBackendType `json:"type"`
+	MetaUrl *string           `json:"metaUrl,omitempty"`
+	// Optional object storage URL passed to JuiceFS mount as --bucket.
+	Bucket               *string                     `json:"bucket,omitempty"`
 	CacheSizeMiB         *float32                    `json:"cacheSizeMiB,omitempty"`
 	Credential           *JuiceFSVolumeCredentialDto `json:"credential,omitempty"`
 	AdditionalProperties map[string]interface{}
@@ -108,6 +110,38 @@ func (o *CreateVolumeBackendDto) SetMetaUrl(v string) {
 	o.MetaUrl = &v
 }
 
+// GetBucket returns the Bucket field value if set, zero value otherwise.
+func (o *CreateVolumeBackendDto) GetBucket() string {
+	if o == nil || IsNil(o.Bucket) {
+		var ret string
+		return ret
+	}
+	return *o.Bucket
+}
+
+// GetBucketOk returns a tuple with the Bucket field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *CreateVolumeBackendDto) GetBucketOk() (*string, bool) {
+	if o == nil || IsNil(o.Bucket) {
+		return nil, false
+	}
+	return o.Bucket, true
+}
+
+// HasBucket returns a boolean if a field has been set.
+func (o *CreateVolumeBackendDto) HasBucket() bool {
+	if o != nil && !IsNil(o.Bucket) {
+		return true
+	}
+
+	return false
+}
+
+// SetBucket gets a reference to the given string and assigns it to the Bucket field.
+func (o *CreateVolumeBackendDto) SetBucket(v string) {
+	o.Bucket = &v
+}
+
 // GetCacheSizeMiB returns the CacheSizeMiB field value if set, zero value otherwise.
 func (o *CreateVolumeBackendDto) GetCacheSizeMiB() float32 {
 	if o == nil || IsNil(o.CacheSizeMiB) {
@@ -186,6 +220,9 @@ func (o CreateVolumeBackendDto) ToMap() (map[string]interface{}, error) {
 	if !IsNil(o.MetaUrl) {
 		toSerialize["metaUrl"] = o.MetaUrl
 	}
+	if !IsNil(o.Bucket) {
+		toSerialize["bucket"] = o.Bucket
+	}
 	if !IsNil(o.CacheSizeMiB) {
 		toSerialize["cacheSizeMiB"] = o.CacheSizeMiB
 	}
@@ -237,6 +274,7 @@ func (o *CreateVolumeBackendDto) UnmarshalJSON(data []byte) (err error) {
 	if err = json.Unmarshal(data, &additionalProperties); err == nil {
 		delete(additionalProperties, "type")
 		delete(additionalProperties, "metaUrl")
+		delete(additionalProperties, "bucket")
 		delete(additionalProperties, "cacheSizeMiB")
 		delete(additionalProperties, "credential")
 		o.AdditionalProperties = additionalProperties

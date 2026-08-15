@@ -10,6 +10,7 @@ const (
 
 type JuiceFSVolumeSourceDTO struct {
 	MetaURL      string `json:"metaUrl" validate:"required"`
+	Bucket       string `json:"bucket,omitempty"`
 	CacheSizeMiB int64  `json:"cacheSizeMiB,omitempty" validate:"min=0"`
 }
 

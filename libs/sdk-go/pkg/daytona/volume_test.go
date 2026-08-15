@@ -163,10 +163,26 @@ func TestVolumeCreateWithOptionsSendsBackend(t *testing.T) {
 	client := createTestClientWithServer(t, server)
 	backend := apiclient.NewCreateVolumeBackendDto(apiclient.VOLUMEBACKENDTYPE_JUICEFS)
 	backend.SetMetaUrl("redis://metadata:6379/1")
+	backend.SetBucket("https://storage.example.com/juicefs-data")
 	_, err := client.Volume.CreateWithOptions(context.Background(), "juicefs", &CreateVolumeOptions{Backend: backend})
 	require.NoError(t, err)
 	assert.Equal(t, "juicefs", requestBody["name"])
 	assert.Equal(t, "juicefs", requestBody["backend"].(map[string]any)["type"])
+	assert.Equal(t, "https://storage.example.com/juicefs-data", requestBody["backend"].(map[string]any)["bucket"])
+}
+
+func TestVolumeConversionIncludesBucketOverride(t *testing.T) {
+	bucket := "https://storage.example.com/juicefs-data"
+	dto := &apiclient.VolumeDto{
+		Id:        "vol-1",
+		Name:      "juicefs",
+		State:     apiclient.VOLUMESTATE_READY,
+		Backend:   apiclient.VolumeBackendDto{Type: apiclient.VOLUMEBACKENDTYPE_JUICEFS, Bucket: &bucket},
+		Lifecycle: apiclient.VOLUMELIFECYCLE_EXTERNAL,
+	}
+	volume := volumeDtoToVolume(dto)
+	require.NotNil(t, volume.Backend)
+	require.Equal(t, bucket, *volume.Backend.Bucket)
 }
 
 func TestVolumeWaitForReadyBehaviors(t *testing.T) {

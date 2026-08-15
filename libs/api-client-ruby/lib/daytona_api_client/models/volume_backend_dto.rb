@@ -19,6 +19,8 @@ module DaytonaApiClient
 
     attr_accessor :meta_url
 
+    attr_accessor :bucket
+
     attr_accessor :cache_size_mi_b
 
     class EnumAttributeValidator
@@ -48,6 +50,7 @@ module DaytonaApiClient
       {
         :'type' => :'type',
         :'meta_url' => :'metaUrl',
+        :'bucket' => :'bucket',
         :'cache_size_mi_b' => :'cacheSizeMiB'
       }
     end
@@ -67,6 +70,7 @@ module DaytonaApiClient
       {
         :'type' => :'VolumeBackendType',
         :'meta_url' => :'String',
+        :'bucket' => :'String',
         :'cache_size_mi_b' => :'Float'
       }
     end
@@ -101,6 +105,10 @@ module DaytonaApiClient
 
       if attributes.key?(:'meta_url')
         self.meta_url = attributes[:'meta_url']
+      end
+
+      if attributes.key?(:'bucket')
+        self.bucket = attributes[:'bucket']
       end
 
       if attributes.key?(:'cache_size_mi_b')
@@ -145,6 +153,7 @@ module DaytonaApiClient
       self.class == o.class &&
           type == o.type &&
           meta_url == o.meta_url &&
+          bucket == o.bucket &&
           cache_size_mi_b == o.cache_size_mi_b
     end
 
@@ -157,7 +166,7 @@ module DaytonaApiClient
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [type, meta_url, cache_size_mi_b].hash
+      [type, meta_url, bucket, cache_size_mi_b].hash
     end
 
     # Builds the object from hash

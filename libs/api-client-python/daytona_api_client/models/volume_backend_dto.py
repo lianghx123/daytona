@@ -33,9 +33,10 @@ class VolumeBackendDto(BaseModel):
     """ # noqa: E501
     type: VolumeBackendType
     meta_url: Optional[StrictStr] = Field(default=None, serialization_alias="metaUrl")
+    bucket: Optional[StrictStr] = None
     cache_size_mi_b: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, serialization_alias="cacheSizeMiB")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["type", "metaUrl", "cacheSizeMiB"]
+    __properties: ClassVar[List[str]] = ["type", "metaUrl", "bucket", "cacheSizeMiB"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -96,6 +97,7 @@ class VolumeBackendDto(BaseModel):
         _obj = cls.model_validate({
             "type": obj.get("type"),
             "meta_url": obj.get("metaUrl"),
+            "bucket": obj.get("bucket"),
             "cache_size_mi_b": obj.get("cacheSizeMiB")
         })
         # store additional fields in additional_properties

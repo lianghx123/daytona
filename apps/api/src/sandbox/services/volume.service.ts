@@ -6,7 +6,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, Not, In, FindOptionsWhere } from 'typeorm'
-import { Volume } from '../entities/volume.entity'
+import { JuiceFSVolumeBackendConfig, Volume } from '../entities/volume.entity'
 import { VolumeState } from '../enums/volume-state.enum'
 import { CreateVolumeDto } from '../dto/create-volume.dto'
 import { v4 as uuidv4 } from 'uuid'
@@ -27,6 +27,7 @@ import { VolumeBackendType } from '../enums/volume-backend-type.enum'
 import { VolumeLifecycle } from '../enums/volume-lifecycle.enum'
 import { DEFAULT_JUICEFS_CACHE_SIZE_MIB } from '../dto/create-volume.dto'
 import { VolumeCredentialService } from './volume-credential.service'
+import { parseJuiceFSEndpoint, probeJuiceFSEndpoint } from '../utils/juicefs-connectivity.util'
 
 @Injectable()
 export class VolumeService {
@@ -43,28 +44,6 @@ export class VolumeService {
     private readonly dataSource: DataSource,
     private readonly volumeCredentialService: VolumeCredentialService,
   ) {}
-
-  private validateJuiceFSMetaUrl(metaUrl?: string): string {
-    if (!metaUrl?.trim()) {
-      throw new BadRequestError('JuiceFS metaUrl is required')
-    }
-
-    let parsed: URL
-    try {
-      parsed = new URL(metaUrl)
-    } catch {
-      throw new BadRequestError('JuiceFS metaUrl must be an absolute URL with a scheme')
-    }
-
-    if (!parsed.protocol || parsed.protocol === ':') {
-      throw new BadRequestError('JuiceFS metaUrl must include a scheme')
-    }
-    if (parsed.password) {
-      throw new BadRequestError('JuiceFS metaUrl must not contain a password; use backend.credential.metaPassword')
-    }
-
-    return metaUrl.trim()
-  }
 
   private async validateOrganizationQuotas(
     organization: Organization,
@@ -114,6 +93,24 @@ export class VolumeService {
     try {
       this.organizationService.assertOrganizationIsNotSuspended(organization)
 
+      let juiceFSConfig: JuiceFSVolumeBackendConfig | undefined
+      if (backendType === VolumeBackendType.JUICEFS) {
+        const metadataEndpoint = parseJuiceFSEndpoint(createVolumeDto.backend?.metaUrl, 'metadata')!
+        const bucketEndpoint = parseJuiceFSEndpoint(createVolumeDto.backend?.bucket, 'bucket', {
+          optional: true,
+          rejectUserInfo: true,
+        })
+        await Promise.all([
+          probeJuiceFSEndpoint(metadataEndpoint, 'metadata'),
+          ...(bucketEndpoint ? [probeJuiceFSEndpoint(bucketEndpoint, 'bucket')] : []),
+        ])
+        juiceFSConfig = {
+          metaUrl: metadataEndpoint.url,
+          ...(bucketEndpoint ? { bucket: bucketEndpoint.url } : {}),
+          cacheSizeMiB: createVolumeDto.backend?.cacheSizeMiB ?? DEFAULT_JUICEFS_CACHE_SIZE_MIB,
+        }
+      }
+
       const newVolumeCount = 1
 
       const { pendingVolumeCountIncremented } = await this.validateOrganizationQuotas(organization, newVolumeCount)
@@ -146,12 +143,8 @@ export class VolumeService {
         volume.backendType = backendType
 
         if (backendType === VolumeBackendType.JUICEFS) {
-          const metaUrl = this.validateJuiceFSMetaUrl(createVolumeDto.backend?.metaUrl)
           volume.lifecycle = VolumeLifecycle.EXTERNAL
-          volume.backendConfig = {
-            metaUrl,
-            cacheSizeMiB: createVolumeDto.backend?.cacheSizeMiB ?? DEFAULT_JUICEFS_CACHE_SIZE_MIB,
-          }
+          volume.backendConfig = juiceFSConfig!
 
           const metaPassword = createVolumeDto.backend?.credential?.metaPassword
           if (metaPassword) {

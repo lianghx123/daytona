@@ -14290,6 +14290,7 @@ components:
       type: string
     VolumeBackendDto:
       example:
+        bucket: https://minio.internal:9000/juicefs-data
         metaUrl: redis://juicefs-meta:6379/12
         type: ""
         cacheSizeMiB: 10240
@@ -14299,6 +14300,9 @@ components:
           - $ref: "#/components/schemas/VolumeBackendType"
         metaUrl:
           example: redis://juicefs-meta:6379/12
+          type: string
+        bucket:
+          example: https://minio.internal:9000/juicefs-data
           type: string
         cacheSizeMiB:
           example: 10240
@@ -14320,6 +14324,7 @@ components:
         errorReason: Error processing volume
         name: my-volume
         backend:
+          bucket: https://minio.internal:9000/juicefs-data
           metaUrl: redis://juicefs-meta:6379/12
           type: ""
           cacheSizeMiB: 10240
@@ -14392,6 +14397,10 @@ components:
           - $ref: "#/components/schemas/VolumeBackendType"
         metaUrl:
           example: redis://juicefs-meta:6379/12
+          type: string
+        bucket:
+          description: Optional object storage URL passed to JuiceFS mount as --bucket.
+          example: https://minio.internal:9000/juicefs-data
           type: string
         cacheSizeMiB:
           default: 10240

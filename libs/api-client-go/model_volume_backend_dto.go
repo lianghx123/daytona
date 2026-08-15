@@ -23,6 +23,7 @@ var _ MappedNullable = &VolumeBackendDto{}
 type VolumeBackendDto struct {
 	Type                 VolumeBackendType `json:"type"`
 	MetaUrl              *string           `json:"metaUrl,omitempty"`
+	Bucket               *string           `json:"bucket,omitempty"`
 	CacheSizeMiB         *float32          `json:"cacheSizeMiB,omitempty"`
 	AdditionalProperties map[string]interface{}
 }
@@ -103,6 +104,38 @@ func (o *VolumeBackendDto) SetMetaUrl(v string) {
 	o.MetaUrl = &v
 }
 
+// GetBucket returns the Bucket field value if set, zero value otherwise.
+func (o *VolumeBackendDto) GetBucket() string {
+	if o == nil || IsNil(o.Bucket) {
+		var ret string
+		return ret
+	}
+	return *o.Bucket
+}
+
+// GetBucketOk returns a tuple with the Bucket field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *VolumeBackendDto) GetBucketOk() (*string, bool) {
+	if o == nil || IsNil(o.Bucket) {
+		return nil, false
+	}
+	return o.Bucket, true
+}
+
+// HasBucket returns a boolean if a field has been set.
+func (o *VolumeBackendDto) HasBucket() bool {
+	if o != nil && !IsNil(o.Bucket) {
+		return true
+	}
+
+	return false
+}
+
+// SetBucket gets a reference to the given string and assigns it to the Bucket field.
+func (o *VolumeBackendDto) SetBucket(v string) {
+	o.Bucket = &v
+}
+
 // GetCacheSizeMiB returns the CacheSizeMiB field value if set, zero value otherwise.
 func (o *VolumeBackendDto) GetCacheSizeMiB() float32 {
 	if o == nil || IsNil(o.CacheSizeMiB) {
@@ -148,6 +181,9 @@ func (o VolumeBackendDto) ToMap() (map[string]interface{}, error) {
 	toSerialize["type"] = o.Type
 	if !IsNil(o.MetaUrl) {
 		toSerialize["metaUrl"] = o.MetaUrl
+	}
+	if !IsNil(o.Bucket) {
+		toSerialize["bucket"] = o.Bucket
 	}
 	if !IsNil(o.CacheSizeMiB) {
 		toSerialize["cacheSizeMiB"] = o.CacheSizeMiB
@@ -197,6 +233,7 @@ func (o *VolumeBackendDto) UnmarshalJSON(data []byte) (err error) {
 	if err = json.Unmarshal(data, &additionalProperties); err == nil {
 		delete(additionalProperties, "type")
 		delete(additionalProperties, "metaUrl")
+		delete(additionalProperties, "bucket")
 		delete(additionalProperties, "cacheSizeMiB")
 		o.AdditionalProperties = additionalProperties
 	}

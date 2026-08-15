@@ -26,6 +26,7 @@ import { SandboxEvents } from '../constants/sandbox-events.constants'
 import { SandboxStartedEvent } from '../events/sandbox-started.event'
 import { persistSnapshotFromSandbox } from '../utils/persist-snapshot-from-sandbox.util'
 import { Runner } from '../entities/runner.entity'
+import { enrichJuiceFSJobError } from '../utils/juicefs-job-error.util'
 
 /**
  * Service for handling entity state updates based on job completion (v2 runners only).
@@ -156,9 +157,10 @@ export class JobStateHandlerService {
           updateData.daemonVersion = metadata.daemonVersion
         }
       } else if (job.status === JobStatus.FAILED) {
-        this.logger.error(`CREATE_SANDBOX job ${job.id} failed for sandbox ${sandboxId}: ${job.errorMessage}`)
+        const contextualError = enrichJuiceFSJobError(job.errorMessage, sandbox.region, job.runnerId)
+        this.logger.error(`CREATE_SANDBOX job ${job.id} failed for sandbox ${sandboxId}: ${contextualError}`)
         updateData.state = SandboxState.ERROR
-        const { recoverable, errorReason } = sanitizeSandboxError(job.errorMessage)
+        const { recoverable, errorReason } = sanitizeSandboxError(contextualError)
         updateData.errorReason = errorReason || 'Failed to create sandbox'
         updateData.recoverable = recoverable
       }
@@ -201,9 +203,10 @@ export class JobStateHandlerService {
           updateData.daemonVersion = metadata.daemonVersion
         }
       } else if (job.status === JobStatus.FAILED) {
-        this.logger.error(`START_SANDBOX job ${job.id} failed for sandbox ${sandboxId}: ${job.errorMessage}`)
+        const contextualError = enrichJuiceFSJobError(job.errorMessage, sandbox.region, job.runnerId)
+        this.logger.error(`START_SANDBOX job ${job.id} failed for sandbox ${sandboxId}: ${contextualError}`)
         updateData.state = SandboxState.ERROR
-        const { recoverable, errorReason } = sanitizeSandboxError(job.errorMessage)
+        const { recoverable, errorReason } = sanitizeSandboxError(contextualError)
         updateData.errorReason = errorReason || 'Failed to start sandbox'
         updateData.recoverable = recoverable
       }
@@ -603,9 +606,10 @@ export class JobStateHandlerService {
           Object.assign(updateData, Sandbox.getBackupStateUpdate(sandbox, BackupState.NONE))
         }
       } else if (job.status === JobStatus.FAILED) {
-        this.logger.error(`RECOVER_SANDBOX job ${job.id} failed for sandbox ${sandboxId}: ${job.errorMessage}`)
+        const contextualError = enrichJuiceFSJobError(job.errorMessage, sandbox.region, job.runnerId)
+        this.logger.error(`RECOVER_SANDBOX job ${job.id} failed for sandbox ${sandboxId}: ${contextualError}`)
         updateData.state = SandboxState.ERROR
-        const { recoverable, errorReason } = sanitizeSandboxError(job.errorMessage)
+        const { recoverable, errorReason } = sanitizeSandboxError(contextualError)
         updateData.errorReason = errorReason || 'Failed to recover sandbox'
         updateData.recoverable = recoverable
 

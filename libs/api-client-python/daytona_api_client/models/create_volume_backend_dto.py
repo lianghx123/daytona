@@ -35,10 +35,11 @@ class CreateVolumeBackendDto(BaseModel):
     """ # noqa: E501
     type: VolumeBackendType
     meta_url: Optional[StrictStr] = Field(default=None, serialization_alias="metaUrl")
+    bucket: Optional[StrictStr] = Field(default=None, description="Optional object storage URL passed to JuiceFS mount as --bucket.")
     cache_size_mi_b: Optional[Union[Annotated[float, Field(strict=True, ge=0)], Annotated[int, Field(strict=True, ge=0)]]] = Field(default=10240, serialization_alias="cacheSizeMiB")
     credential: Optional[JuiceFSVolumeCredentialDto] = None
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["type", "metaUrl", "cacheSizeMiB", "credential"]
+    __properties: ClassVar[List[str]] = ["type", "metaUrl", "bucket", "cacheSizeMiB", "credential"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -102,6 +103,7 @@ class CreateVolumeBackendDto(BaseModel):
         _obj = cls.model_validate({
             "type": obj.get("type"),
             "meta_url": obj.get("metaUrl"),
+            "bucket": obj.get("bucket"),
             "cache_size_mi_b": obj.get("cacheSizeMiB") if obj.get("cacheSizeMiB") is not None else 10240,
             "credential": JuiceFSVolumeCredentialDto.from_dict(obj["credential"]) if obj.get("credential") is not None else None
         })

@@ -32,6 +32,7 @@ const formSchema = z
     name: z.string().trim().min(1, 'Volume name is required'),
     backendType: z.enum(['managed_s3', 'juicefs']),
     metaUrl: z.string(),
+    bucket: z.string(),
     cacheSizeMiB: z.string(),
     metaPassword: z.string(),
   })
@@ -51,6 +52,22 @@ const formSchema = z
       }
     }
 
+    if (value.bucket.trim()) {
+      try {
+        const url = new URL(value.bucket)
+        if (!url.protocol || !url.hostname) throw new Error()
+        if (url.username || url.password) {
+          context.addIssue({
+            code: 'custom',
+            path: ['bucket'],
+            message: 'Do not include credentials in the bucket URL',
+          })
+        }
+      } catch {
+        context.addIssue({ code: 'custom', path: ['bucket'], message: 'Enter an absolute URL with a scheme' })
+      }
+    }
+
     const cacheSize = Number(value.cacheSizeMiB)
     if (!Number.isInteger(cacheSize) || cacheSize < 0) {
       context.addIssue({ code: 'custom', path: ['cacheSizeMiB'], message: 'Cache size must be a non-negative integer' })
@@ -63,6 +80,7 @@ const defaultValues: FormValues = {
   name: '',
   backendType: 'managed_s3',
   metaUrl: '',
+  bucket: '',
   cacheSizeMiB: '10240',
   metaPassword: '',
 }
@@ -117,6 +135,7 @@ export const CreateVolumeSheet = ({
                 ? {
                     type: 'juicefs',
                     metaUrl: value.metaUrl.trim(),
+                    bucket: value.bucket.trim() || undefined,
                     cacheSizeMiB: Number(value.cacheSizeMiB),
                     credential: value.metaPassword ? { metaPassword: value.metaPassword } : undefined,
                   }
@@ -240,6 +259,28 @@ export const CreateVolumeSheet = ({
                               />
                               <FieldDescription>
                                 The JuiceFS filesystem must already be formatted. Do not include a password in this URL.
+                              </FieldDescription>
+                              {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                            </Field>
+                          )
+                        }}
+                      </form.Field>
+                      <form.Field name="bucket">
+                        {(field) => {
+                          const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                          return (
+                            <Field data-invalid={isInvalid}>
+                              <FieldLabel htmlFor={field.name}>Object Storage Bucket URL (optional)</FieldLabel>
+                              <Input
+                                aria-invalid={isInvalid}
+                                id={field.name}
+                                value={field.state.value}
+                                onBlur={field.handleBlur}
+                                onChange={(event) => field.handleChange(event.target.value)}
+                                placeholder="https://minio.internal:9000/juicefs-data"
+                              />
+                              <FieldDescription>
+                                Overrides the object storage location recorded by JuiceFS and is passed as --bucket.
                               </FieldDescription>
                               {isInvalid && <FieldError errors={field.state.meta.errors} />}
                             </Field>

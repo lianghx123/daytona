@@ -149,6 +149,7 @@ type Volume struct {
 type VolumeBackend struct {
 	Type         string   `json:"type"`
 	MetaURL      *string  `json:"metaUrl,omitempty"`
+	Bucket       *string  `json:"bucket,omitempty"`
 	CacheSizeMiB *float32 `json:"cacheSizeMiB,omitempty"`
 }
 

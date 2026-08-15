@@ -131,10 +131,13 @@ Format and operate the JuiceFS filesystem outside Daytona, then register its met
 
 `metaUrl` must be an absolute URL with a scheme. Do not embed a password in the URL; pass it through `credential.metaPassword`. The password is encrypted by the Daytona API and is never returned by volume or job APIs. `cacheSizeMiB` defaults to `10240` and controls the disposable local Runner cache.
 
+Use the optional `bucket` URL when the object storage location recorded in JuiceFS metadata is not reachable from your Runners. Daytona passes this value to `juicefs mount --bucket`; when omitted, JuiceFS uses the bucket stored in its metadata. Bucket URLs may contain a path and query parameters, but must include a scheme and hostname and must not contain embedded credentials.
+
 ```typescript
 const volume = await daytona.volume.create('shared-juicefs', {
   type: 'juicefs',
   metaUrl: 'redis://metadata.internal:6379/1',
+  bucket: 'https://minio.runner-network.internal:9000/juicefs-data',
   cacheSizeMiB: 20480,
   credential: { metaPassword: process.env.JUICEFS_META_PASSWORD },
 })
@@ -148,11 +151,14 @@ volume = daytona.volume.create(
     CreateVolumeBackendDto(
         type=VolumeBackendType.JUICEFS,
         meta_url="redis://metadata.internal:6379/1",
+        bucket="https://minio.runner-network.internal:9000/juicefs-data",
         cache_size_mi_b=20480,
         credential=JuiceFSVolumeCredentialDto(meta_password="secret"),
     ),
 )
 ```
+
+When a JuiceFS volume is created, the API performs a short DNS/TCP connectivity check for the metadata endpoint and for an explicitly configured bucket. `READY` means the API control plane could reach those endpoints; it does not guarantee reachability from every Runner region. Before mounting, each Runner checks metadata connectivity, runs `juicefs status`, checks the effective bucket endpoint, and then performs the mount. Regional failures identify the Runner, region, failure stage, and sanitized `hostname:port` without exposing passwords, URL paths, or query parameters.
 
 The backend configuration is immutable. To change it, delete the Daytona volume reference and create a new one. Daytona currently supports `managed_s3` and `juicefs`; external S3 backends are not supported.
 

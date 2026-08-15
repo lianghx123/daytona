@@ -89,6 +89,7 @@ class TestSyncVolumeService:
         backend = CreateVolumeBackendDto(
             type=VolumeBackendType.JUICEFS,
             meta_url="redis://metadata:6379/1",
+            bucket="https://storage.example.com/juicefs-data",
             cache_size_mi_b=2048,
         )
 
@@ -143,6 +144,7 @@ class TestAsyncVolumeService:
         backend = CreateVolumeBackendDto(
             type=VolumeBackendType.JUICEFS,
             meta_url="redis://metadata:6379/1",
+            bucket="https://storage.example.com/juicefs-data",
             cache_size_mi_b=2048,
         )
 

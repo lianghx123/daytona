@@ -4,6 +4,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -171,22 +172,66 @@ func (d *DockerClient) ensureVolumeFuseMounted(ctx context.Context, volume dto.V
 	}
 	cmd, err := mounter.MountCommand(ctx, volume, credential, mountPath)
 	if err != nil {
+		d.cleanupFailedVolumeMount(ctx, volume, mountPath, dirExisted, false)
 		return err
+	}
+	var stderr bytes.Buffer
+	if cmd.Stderr == nil {
+		cmd.Stderr = &stderr
+	} else {
+		cmd.Stderr = io.MultiWriter(cmd.Stderr, &stderr)
 	}
 	err = cmd.Run()
 	if err != nil {
 		d.cleanupFailedVolumeMount(ctx, volume, mountPath, dirExisted, true)
-		return fmt.Errorf("failed to mount %s volume %s to %s: %s", volume.BackendType(), volumeId, mountPath, err)
+		details := sanitizeMountError(stderr.String(), volume, credential)
+		errorPrefix := fmt.Sprintf("failed to mount %s volume %s to %s", volume.BackendType(), volumeId, mountPath)
+		if volume.BackendType() == dto.VolumeBackendJuiceFS {
+			errorPrefix = fmt.Sprintf("JUICEFS_MOUNT_FAILED: failed to mount JuiceFS volume %s to %s", volumeId, mountPath)
+		}
+		if details != "" {
+			return fmt.Errorf("%s: %w: %s", errorPrefix, err, details)
+		}
+		return fmt.Errorf("%s: %w", errorPrefix, err)
 	}
 
 	err = d.waitForMountReady(ctx, mountPath)
 	if err != nil {
 		d.cleanupFailedVolumeMount(ctx, volume, mountPath, dirExisted, true)
+		if volume.BackendType() == dto.VolumeBackendJuiceFS {
+			return fmt.Errorf("JUICEFS_MOUNT_FAILED: mount %s not ready after mounting: %s", mountPath, err)
+		}
 		return fmt.Errorf("mount %s not ready after mounting: %s", mountPath, err)
 	}
 
 	d.logger.InfoContext(ctx, "mounted volume", "volumeId", volumeId, "backend", volume.BackendType(), "mountPath", mountPath)
 	return nil
+}
+
+func sanitizeMountError(message string, volume dto.VolumeDTO, credential *dto.VolumeMountCredentialDTO) string {
+	if volume.Backend != nil && volume.Backend.JuiceFS != nil {
+		return sanitizeJuiceFSError(message, volume.Backend.JuiceFS, credential)
+	}
+	return sanitizeJuiceFSError(message, nil, credential)
+}
+
+func sanitizeJuiceFSError(message string, config *dto.JuiceFSVolumeSourceDTO, credential *dto.VolumeMountCredentialDTO) string {
+	if credential != nil && credential.JuiceFS != nil && credential.JuiceFS.MetaPassword != "" {
+		message = strings.ReplaceAll(message, credential.JuiceFS.MetaPassword, "[REDACTED]")
+	}
+	if config != nil {
+		for _, rawURL := range []string{config.MetaURL, config.Bucket} {
+			if endpoint, err := parseJuiceFSEndpoint("endpoint", rawURL, false); err == nil {
+				message = strings.ReplaceAll(message, strings.TrimSpace(rawURL), endpoint.displayAddress)
+			}
+		}
+	}
+	message = strings.Join(strings.Fields(message), " ")
+	const maxErrorLength = 2048
+	if len(message) > maxErrorLength {
+		message = message[:maxErrorLength] + "..."
+	}
+	return message
 }
 
 func (d *DockerClient) cleanupFailedVolumeMount(ctx context.Context, volume dto.VolumeDTO, mountPath string, dirExisted bool, tryUnmount bool) {
@@ -305,9 +350,11 @@ func (d *DockerClient) getJuiceFSMountCmd(ctx context.Context, volume dto.Volume
 		"-d",
 		"--cache-dir", cacheDir,
 		"--cache-size", fmt.Sprintf("%d", config.CacheSizeMiB),
-		config.MetaURL,
-		path,
 	}
+	if bucket := strings.TrimSpace(config.Bucket); bucket != "" {
+		args = append(args, "--bucket", bucket)
+	}
+	args = append(args, strings.TrimSpace(config.MetaURL), path)
 	cmd := exec.CommandContext(ctx, "juicefs", args...)
 	cmd.Env = os.Environ()
 	if credential != nil && credential.JuiceFS != nil && credential.JuiceFS.MetaPassword != "" {

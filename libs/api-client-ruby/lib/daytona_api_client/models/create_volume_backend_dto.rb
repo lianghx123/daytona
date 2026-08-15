@@ -19,6 +19,9 @@ module DaytonaApiClient
 
     attr_accessor :meta_url
 
+    # Optional object storage URL passed to JuiceFS mount as --bucket.
+    attr_accessor :bucket
+
     attr_accessor :cache_size_mi_b
 
     attr_accessor :credential
@@ -50,6 +53,7 @@ module DaytonaApiClient
       {
         :'type' => :'type',
         :'meta_url' => :'metaUrl',
+        :'bucket' => :'bucket',
         :'cache_size_mi_b' => :'cacheSizeMiB',
         :'credential' => :'credential'
       }
@@ -70,6 +74,7 @@ module DaytonaApiClient
       {
         :'type' => :'VolumeBackendType',
         :'meta_url' => :'String',
+        :'bucket' => :'String',
         :'cache_size_mi_b' => :'Float',
         :'credential' => :'JuiceFSVolumeCredentialDto'
       }
@@ -105,6 +110,10 @@ module DaytonaApiClient
 
       if attributes.key?(:'meta_url')
         self.meta_url = attributes[:'meta_url']
+      end
+
+      if attributes.key?(:'bucket')
+        self.bucket = attributes[:'bucket']
       end
 
       if attributes.key?(:'cache_size_mi_b')
@@ -174,6 +183,7 @@ module DaytonaApiClient
       self.class == o.class &&
           type == o.type &&
           meta_url == o.meta_url &&
+          bucket == o.bucket &&
           cache_size_mi_b == o.cache_size_mi_b &&
           credential == o.credential
     end
@@ -187,7 +197,7 @@ module DaytonaApiClient
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [type, meta_url, cache_size_mi_b, credential].hash
+      [type, meta_url, bucket, cache_size_mi_b, credential].hash
     end
 
     # Builds the object from hash

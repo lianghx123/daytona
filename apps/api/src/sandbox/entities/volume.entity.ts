@@ -10,6 +10,7 @@ import { VolumeLifecycle } from '../enums/volume-lifecycle.enum'
 
 export interface JuiceFSVolumeBackendConfig {
   metaUrl: string
+  bucket?: string
   cacheSizeMiB: number
 }
 

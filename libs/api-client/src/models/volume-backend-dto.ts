@@ -20,5 +20,6 @@ import type { VolumeBackendType } from './volume-backend-type';
 export interface VolumeBackendDto {
     'type': VolumeBackendType;
     'metaUrl'?: string;
+    'bucket'?: string;
     'cacheSizeMiB'?: number;
 }

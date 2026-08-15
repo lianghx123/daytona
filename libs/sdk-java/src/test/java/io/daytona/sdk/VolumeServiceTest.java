@@ -72,7 +72,8 @@ class VolumeServiceTest {
         when(volumesApi.createVolume(any(), isNull())).thenReturn(volumeDto("vol-1", "juicefs", VolumeState.READY));
         CreateVolumeBackendDto backend = new CreateVolumeBackendDto()
                 .type(VolumeBackendType.JUICEFS)
-                .metaUrl("redis://metadata:6379/1");
+                .metaUrl("redis://metadata:6379/1")
+                .bucket("https://storage.example.com/juicefs-data");
 
         service.create("juicefs", backend);
 

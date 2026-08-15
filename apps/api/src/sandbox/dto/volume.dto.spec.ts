@@ -18,7 +18,11 @@ describe('VolumeDto', () => {
       state: VolumeState.READY,
       backendType: VolumeBackendType.JUICEFS,
       lifecycle: VolumeLifecycle.EXTERNAL,
-      backendConfig: { metaUrl: 'redis://metadata:6379/1', cacheSizeMiB: 2048 },
+      backendConfig: {
+        metaUrl: 'redis://metadata:6379/1',
+        bucket: 'https://storage.example.com/juicefs-data',
+        cacheSizeMiB: 2048,
+      },
       credentialRef: '00000000-0000-0000-0000-000000000003',
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -29,6 +33,7 @@ describe('VolumeDto', () => {
     expect(dto.backend).toEqual({
       type: VolumeBackendType.JUICEFS,
       metaUrl: 'redis://metadata:6379/1',
+      bucket: 'https://storage.example.com/juicefs-data',
       cacheSizeMiB: 2048,
     })
     expect(JSON.stringify(dto)).not.toContain('credential')

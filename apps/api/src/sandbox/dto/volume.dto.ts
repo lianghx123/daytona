@@ -17,6 +17,9 @@ export class VolumeBackendDto {
   @ApiPropertyOptional({ example: 'redis://juicefs-meta:6379/12' })
   metaUrl?: string
 
+  @ApiPropertyOptional({ example: 'https://minio.internal:9000/juicefs-data' })
+  bucket?: string
+
   @ApiPropertyOptional({ example: 10240 })
   cacheSizeMiB?: number
 }
@@ -92,6 +95,7 @@ export class VolumeDto {
           ? {
               type: volume.backendType,
               metaUrl: 'metaUrl' in volume.backendConfig ? volume.backendConfig.metaUrl : undefined,
+              bucket: 'bucket' in volume.backendConfig ? volume.backendConfig.bucket : undefined,
               cacheSizeMiB: 'cacheSizeMiB' in volume.backendConfig ? volume.backendConfig.cacheSizeMiB : undefined,
             }
           : { type: VolumeBackendType.MANAGED_S3 },

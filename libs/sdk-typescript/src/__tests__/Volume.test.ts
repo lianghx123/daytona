@@ -70,6 +70,7 @@ describe('VolumeService', () => {
     const backend = {
       type: 'juicefs',
       metaUrl: 'redis://metadata:6379/1',
+      bucket: 'https://storage.example.com/juicefs-data',
       cacheSizeMiB: 2048,
       credential: { metaPassword: 'secret' },
     } as never

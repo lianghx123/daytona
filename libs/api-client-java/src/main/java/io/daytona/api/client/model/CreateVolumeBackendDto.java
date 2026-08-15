@@ -63,6 +63,11 @@ public class CreateVolumeBackendDto {
   @javax.annotation.Nullable
   private String metaUrl;
 
+  public static final String SERIALIZED_NAME_BUCKET = "bucket";
+  @SerializedName(SERIALIZED_NAME_BUCKET)
+  @javax.annotation.Nullable
+  private String bucket;
+
   public static final String SERIALIZED_NAME_CACHE_SIZE_MI_B = "cacheSizeMiB";
   @SerializedName(SERIALIZED_NAME_CACHE_SIZE_MI_B)
   @javax.annotation.Nullable
@@ -111,6 +116,25 @@ public class CreateVolumeBackendDto {
 
   public void setMetaUrl(@javax.annotation.Nullable String metaUrl) {
     this.metaUrl = metaUrl;
+  }
+
+
+  public CreateVolumeBackendDto bucket(@javax.annotation.Nullable String bucket) {
+    this.bucket = bucket;
+    return this;
+  }
+
+  /**
+   * Optional object storage URL passed to JuiceFS mount as --bucket.
+   * @return bucket
+   */
+  @javax.annotation.Nullable
+  public String getBucket() {
+    return bucket;
+  }
+
+  public void setBucket(@javax.annotation.Nullable String bucket) {
+    this.bucket = bucket;
   }
 
 
@@ -209,6 +233,7 @@ public class CreateVolumeBackendDto {
     CreateVolumeBackendDto createVolumeBackendDto = (CreateVolumeBackendDto) o;
     return Objects.equals(this.type, createVolumeBackendDto.type) &&
         Objects.equals(this.metaUrl, createVolumeBackendDto.metaUrl) &&
+        Objects.equals(this.bucket, createVolumeBackendDto.bucket) &&
         Objects.equals(this.cacheSizeMiB, createVolumeBackendDto.cacheSizeMiB) &&
         Objects.equals(this.credential, createVolumeBackendDto.credential)&&
         Objects.equals(this.additionalProperties, createVolumeBackendDto.additionalProperties);
@@ -216,7 +241,7 @@ public class CreateVolumeBackendDto {
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, metaUrl, cacheSizeMiB, credential, additionalProperties);
+    return Objects.hash(type, metaUrl, bucket, cacheSizeMiB, credential, additionalProperties);
   }
 
   @Override
@@ -225,6 +250,7 @@ public class CreateVolumeBackendDto {
     sb.append("class CreateVolumeBackendDto {\n");
     sb.append("    type: ").append(toIndentedString(type)).append("\n");
     sb.append("    metaUrl: ").append(toIndentedString(metaUrl)).append("\n");
+    sb.append("    bucket: ").append(toIndentedString(bucket)).append("\n");
     sb.append("    cacheSizeMiB: ").append(toIndentedString(cacheSizeMiB)).append("\n");
     sb.append("    credential: ").append(toIndentedString(credential)).append("\n");
     sb.append("    additionalProperties: ").append(toIndentedString(additionalProperties)).append("\n");
@@ -246,7 +272,7 @@ public class CreateVolumeBackendDto {
 
   static {
     // a set of all properties/fields (JSON key names)
-    openapiFields = new HashSet<String>(Arrays.asList("type", "metaUrl", "cacheSizeMiB", "credential"));
+    openapiFields = new HashSet<String>(Arrays.asList("type", "metaUrl", "bucket", "cacheSizeMiB", "credential"));
 
     // a set of required properties/fields (JSON key names)
     openapiRequiredFields = new HashSet<String>(Arrays.asList("type"));
@@ -276,6 +302,9 @@ public class CreateVolumeBackendDto {
       VolumeBackendType.validateJsonElement(jsonObj.get("type"));
       if ((jsonObj.get("metaUrl") != null && !jsonObj.get("metaUrl").isJsonNull()) && !jsonObj.get("metaUrl").isJsonPrimitive()) {
         throw new IllegalArgumentException(String.format(java.util.Locale.ROOT, "Expected the field `metaUrl` to be a primitive type in the JSON string but got `%s`", jsonObj.get("metaUrl").toString()));
+      }
+      if ((jsonObj.get("bucket") != null && !jsonObj.get("bucket").isJsonNull()) && !jsonObj.get("bucket").isJsonPrimitive()) {
+        throw new IllegalArgumentException(String.format(java.util.Locale.ROOT, "Expected the field `bucket` to be a primitive type in the JSON string but got `%s`", jsonObj.get("bucket").toString()));
       }
       // validate the optional field `credential`
       if (jsonObj.get("credential") != null && !jsonObj.get("credential").isJsonNull()) {

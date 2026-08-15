@@ -23,6 +23,10 @@ import type { VolumeBackendType } from './volume-backend-type';
 export interface CreateVolumeBackendDto {
     'type': VolumeBackendType;
     'metaUrl'?: string;
+    /**
+     * Optional object storage URL passed to JuiceFS mount as --bucket.
+     */
+    'bucket'?: string;
     'cacheSizeMiB'?: number;
     'credential'?: JuiceFSVolumeCredentialDto;
 }

@@ -76,6 +76,7 @@ type VolumeTableMeta = {
 type VolumeBackendDetails = {
   type: 'managed_s3' | 'juicefs'
   metaUrl?: string
+  bucket?: string
   cacheSizeMiB?: number
 }
 
@@ -606,6 +607,8 @@ function VolumeDetailsDialog({
             <>
               <dt className="text-muted-foreground">Metadata URL</dt>
               <dd className="break-all font-mono">{backend.metaUrl}</dd>
+              <dt className="text-muted-foreground">Bucket override</dt>
+              <dd className="break-all font-mono">{backend.bucket ?? 'Default from JuiceFS metadata'}</dd>
               <dt className="text-muted-foreground">Runner cache</dt>
               <dd>{backend.cacheSizeMiB ?? 10240} MiB</dd>
             </>

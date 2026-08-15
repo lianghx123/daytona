@@ -268,6 +268,7 @@ func volumeDtoToVolume(dto *apiclient.VolumeDto) *types.Volume {
 		volume.Backend = &types.VolumeBackend{
 			Type:         string(backend.GetType()),
 			MetaURL:      backend.MetaUrl,
+			Bucket:       backend.Bucket,
 			CacheSizeMiB: backend.CacheSizeMiB,
 		}
 	}

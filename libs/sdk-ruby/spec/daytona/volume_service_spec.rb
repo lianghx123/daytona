@@ -26,6 +26,7 @@ RSpec.describe Daytona::VolumeService do
       backend = DaytonaApiClient::CreateVolumeBackendDto.new(
         type: DaytonaApiClient::VolumeBackendType::JUICEFS,
         meta_url: 'redis://metadata:6379/1',
+        bucket: 'https://storage.example.com/juicefs-data',
         cache_size_mi_b: 2048
       )
       allow(volumes_api).to receive(:create_volume).and_return(dto)

@@ -2109,6 +2109,9 @@ const docTemplate = `{
                 "metaUrl"
             ],
             "properties": {
+                "bucket": {
+                    "type": "string"
+                },
                 "cacheSizeMiB": {
                     "type": "integer",
                     "minimum": 0

@@ -29,6 +29,16 @@ export class CreateVolumeBackendDto {
   @IsString()
   metaUrl?: string
 
+  @ApiPropertyOptional({
+    example: 'https://minio.internal:9000/juicefs-data',
+    description: 'Optional object storage URL passed to JuiceFS mount as --bucket.',
+  })
+  @ValidateIf((value: CreateVolumeBackendDto) => value.type === VolumeBackendType.JUICEFS)
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
+  bucket?: string
+
   @ApiPropertyOptional({ default: DEFAULT_JUICEFS_CACHE_SIZE_MIB, minimum: 0 })
   @ValidateIf((value: CreateVolumeBackendDto) => value.type === VolumeBackendType.JUICEFS)
   @IsOptional()

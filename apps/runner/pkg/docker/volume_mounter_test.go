@@ -34,7 +34,6 @@ func TestJuiceFSMountCommandKeepsPasswordOutOfArguments(t *testing.T) {
 		"--hide-internal",
 		"--cache-dir", "/var/lib/daytona/juicefs-cache/00000000-0000-0000-0000-000000000001",
 		"--cache-size", "2048",
-		"--capacity", "50",
 		"--bucket", "https://minio.internal:9000/juicefs-data",
 		"redis://metadata:6379/1", "/mnt/volume",
 	}
@@ -62,13 +61,35 @@ func TestJuiceFSMountCommandUsesConfiguredCapacity(t *testing.T) {
 		}},
 	}
 
-	cmd := (&DockerClient{}).getJuiceFSMountCmd(context.Background(), volume, nil, "/mnt/volume")
-	capacityIndex := slices.Index(cmd.Args, "--capacity")
-	if capacityIndex < 0 || capacityIndex+1 >= len(cmd.Args) || cmd.Args[capacityIndex+1] != "125" {
-		t.Fatalf("configured capacity was not passed to JuiceFS: %#v", cmd.Args)
+	dockerClient := &DockerClient{}
+	mountCmd := dockerClient.getJuiceFSMountCmd(context.Background(), volume, nil, "/mnt/volume")
+	if slices.Contains(mountCmd.Args, "--capacity") {
+		t.Fatalf("unsupported --capacity option was passed to juicefs mount: %#v", mountCmd.Args)
 	}
-	if !slices.Contains(cmd.Args, "--hide-internal") {
-		t.Fatalf("JuiceFS internal entries are not hidden: %#v", cmd.Args)
+	if !slices.Contains(mountCmd.Args, "--hide-internal") {
+		t.Fatalf("JuiceFS internal entries are not hidden: %#v", mountCmd.Args)
+	}
+
+	configCmd := dockerClient.getJuiceFSCapacityConfigCmd(context.Background(), volume.Backend.JuiceFS, nil)
+	wantArgs := []string{"juicefs", "config", "redis://metadata:6379/1", "--capacity", "125", "--yes"}
+	if !slices.Equal(configCmd.Args, wantArgs) {
+		t.Fatalf("unexpected JuiceFS capacity configuration arguments: %#v", configCmd.Args)
+	}
+}
+
+func TestJuiceFSCapacityConfigKeepsPasswordOutOfArguments(t *testing.T) {
+	config := &dto.JuiceFSVolumeSourceDTO{MetaURL: "redis://metadata:6379/1"}
+	credential := &dto.VolumeMountCredentialDTO{JuiceFS: &dto.JuiceFSVolumeMountCredentialDTO{MetaPassword: "top-secret"}}
+	cmd := (&DockerClient{}).getJuiceFSCapacityConfigCmd(context.Background(), config, credential)
+	wantArgs := []string{"juicefs", "config", "redis://metadata:6379/1", "--capacity", "50", "--yes"}
+	if !slices.Equal(cmd.Args, wantArgs) {
+		t.Fatalf("default JuiceFS capacity was not configured: %#v", cmd.Args)
+	}
+	if strings.Contains(strings.Join(cmd.Args, " "), "top-secret") {
+		t.Fatal("metadata password was included in capacity configuration arguments")
+	}
+	if !slices.Contains(cmd.Env, "META_PASSWORD=top-secret") {
+		t.Fatal("metadata password was not provided through the capacity configuration environment")
 	}
 }
 
@@ -138,12 +159,15 @@ func TestSanitizeMountErrorRedactsMetadataPassword(t *testing.T) {
 }
 
 func TestParseJuiceFSStatusReturnsDefaultBucket(t *testing.T) {
-	bucket, err := parseJuiceFSStatus([]byte(`{"Setting":{"Bucket":"https://minio.internal:9000/juicefs-data"},"Sessions":[],"Stat":{}}`))
+	status, err := parseJuiceFSStatus([]byte(`{"Setting":{"Bucket":"https://minio.internal:9000/juicefs-data","Capacity":53687091200},"Sessions":[],"Stat":{}}`))
 	if err != nil {
 		t.Fatalf("valid JuiceFS status was rejected: %v", err)
 	}
-	if bucket != "https://minio.internal:9000/juicefs-data" {
-		t.Fatalf("unexpected bucket: %q", bucket)
+	if status.Setting.Bucket != "https://minio.internal:9000/juicefs-data" {
+		t.Fatalf("unexpected bucket: %q", status.Setting.Bucket)
+	}
+	if status.Setting.Capacity != 50<<30 {
+		t.Fatalf("unexpected capacity: %d", status.Setting.Capacity)
 	}
 }
 

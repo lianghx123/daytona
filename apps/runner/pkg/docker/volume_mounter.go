@@ -74,7 +74,8 @@ type juiceFSEndpoint struct {
 
 type juiceFSStatus struct {
 	Setting *struct {
-		Bucket string `json:"Bucket"`
+		Bucket   string `json:"Bucket"`
+		Capacity uint64 `json:"Capacity"`
 	} `json:"Setting"`
 }
 
@@ -110,13 +111,16 @@ func (m *JuiceFSVolumeMounter) MountCommand(ctx context.Context, volume dto.Volu
 	if err := probeJuiceFSEndpoint(ctx, "metadata", metadataEndpoint); err != nil {
 		return nil, err
 	}
-	metadataBucket, err := inspectJuiceFSStatus(ctx, config, credential)
+	status, err := inspectJuiceFSStatus(ctx, config, credential)
 	if err != nil {
 		return nil, err
 	}
+	if err := ensureJuiceFSCapacity(ctx, m.docker, config, credential, status.Setting.Capacity); err != nil {
+		return nil, err
+	}
 	effectiveBucketEndpoint := configuredBucketEndpoint
-	if effectiveBucketEndpoint == nil && strings.TrimSpace(metadataBucket) != "" {
-		effectiveBucketEndpoint, err = parseJuiceFSEndpoint("bucket", metadataBucket, true)
+	if effectiveBucketEndpoint == nil && strings.TrimSpace(status.Setting.Bucket) != "" {
+		effectiveBucketEndpoint, err = parseJuiceFSEndpoint("bucket", status.Setting.Bucket, true)
 		if err != nil {
 			return nil, fmt.Errorf("JUICEFS_BUCKET_UNREACHABLE: metadata returned an invalid bucket endpoint: %w", err)
 		}
@@ -201,7 +205,7 @@ func classifyJuiceFSNetworkError(err error) string {
 	return "connection failed"
 }
 
-func inspectJuiceFSStatus(ctx context.Context, config *dto.JuiceFSVolumeSourceDTO, credential *dto.VolumeMountCredentialDTO) (string, error) {
+func inspectJuiceFSStatus(ctx context.Context, config *dto.JuiceFSVolumeSourceDTO, credential *dto.VolumeMountCredentialDTO) (*juiceFSStatus, error) {
 	statusCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(statusCtx, "juicefs", "status", strings.TrimSpace(config.MetaURL))
@@ -216,25 +220,57 @@ func inspectJuiceFSStatus(ctx context.Context, config *dto.JuiceFSVolumeSourceDT
 			details = sanitizeJuiceFSError(string(exitError.Stderr), config, credential)
 		}
 		if statusCtx.Err() == context.DeadlineExceeded {
-			return "", fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status timed out")
+			return nil, fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status timed out")
 		}
 		if details != "" {
-			return "", fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status failed: %s", details)
+			return nil, fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status failed: %s", details)
 		}
-		return "", fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status failed")
+		return nil, fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status failed")
 	}
 	return parseJuiceFSStatus(output)
 }
 
-func parseJuiceFSStatus(output []byte) (string, error) {
+func parseJuiceFSStatus(output []byte) (*juiceFSStatus, error) {
 	var status juiceFSStatus
 	if err := json.Unmarshal(output, &status); err != nil {
-		return "", fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status returned invalid JSON")
+		return nil, fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status returned invalid JSON")
 	}
 	if status.Setting == nil {
-		return "", fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status did not return filesystem settings")
+		return nil, fmt.Errorf("JUICEFS_METADATA_INVALID_OR_UNAUTHORIZED: juicefs status did not return filesystem settings")
 	}
-	return strings.TrimSpace(status.Setting.Bucket), nil
+	status.Setting.Bucket = strings.TrimSpace(status.Setting.Bucket)
+	return &status, nil
+}
+
+func ensureJuiceFSCapacity(ctx context.Context, docker *DockerClient, config *dto.JuiceFSVolumeSourceDTO, credential *dto.VolumeMountCredentialDTO, currentCapacity uint64) error {
+	capacityGiB := juiceFSCapacityGiB(config)
+	const bytesPerGiB uint64 = 1 << 30
+	if capacityGiB <= 0 || uint64(capacityGiB) > ^uint64(0)/bytesPerGiB {
+		return fmt.Errorf("JUICEFS_CAPACITY_CONFIGURATION_FAILED: JuiceFS capacity must be a positive integer within the supported range")
+	}
+	desiredCapacity := uint64(capacityGiB) * bytesPerGiB
+	if currentCapacity == desiredCapacity {
+		return nil
+	}
+
+	configCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	cmd := docker.getJuiceFSCapacityConfigCmd(configCtx, config, credential)
+	_, err := cmd.Output()
+	if err == nil {
+		return nil
+	}
+	if configCtx.Err() == context.DeadlineExceeded {
+		return fmt.Errorf("JUICEFS_CAPACITY_CONFIGURATION_FAILED: juicefs capacity configuration timed out")
+	}
+	details := ""
+	if exitError, ok := err.(*exec.ExitError); ok {
+		details = sanitizeJuiceFSError(string(exitError.Stderr), config, credential)
+	}
+	if details != "" {
+		return fmt.Errorf("JUICEFS_CAPACITY_CONFIGURATION_FAILED: juicefs capacity configuration failed: %s", details)
+	}
+	return fmt.Errorf("JUICEFS_CAPACITY_CONFIGURATION_FAILED: juicefs capacity configuration failed")
 }
 
 type VolumeMounterRegistry struct {

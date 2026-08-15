@@ -351,7 +351,6 @@ func (d *DockerClient) getJuiceFSMountCmd(ctx context.Context, volume dto.Volume
 		"--hide-internal",
 		"--cache-dir", cacheDir,
 		"--cache-size", fmt.Sprintf("%d", config.CacheSizeMiB),
-		"--capacity", fmt.Sprintf("%d", juiceFSCapacityGiB(config)),
 	}
 	if bucket := strings.TrimSpace(config.Bucket); bucket != "" {
 		args = append(args, "--bucket", bucket)
@@ -364,5 +363,22 @@ func (d *DockerClient) getJuiceFSMountCmd(ctx context.Context, volume dto.Volume
 	}
 	cmd.Stderr = io.Writer(&log.ErrorLogWriter{})
 	cmd.Stdout = io.Writer(&log.InfoLogWriter{})
+	return cmd
+}
+
+func (d *DockerClient) getJuiceFSCapacityConfigCmd(ctx context.Context, config *dto.JuiceFSVolumeSourceDTO, credential *dto.VolumeMountCredentialDTO) *exec.Cmd {
+	cmd := exec.CommandContext(
+		ctx,
+		"juicefs",
+		"config",
+		strings.TrimSpace(config.MetaURL),
+		"--capacity",
+		fmt.Sprintf("%d", juiceFSCapacityGiB(config)),
+		"--yes",
+	)
+	cmd.Env = os.Environ()
+	if credential != nil && credential.JuiceFS != nil && credential.JuiceFS.MetaPassword != "" {
+		cmd.Env = append(cmd.Env, "META_PASSWORD="+credential.JuiceFS.MetaPassword)
+	}
 	return cmd
 }

@@ -129,7 +129,7 @@ curl 'https://app.daytona.io/api/volumes' \
 
 Format and operate the JuiceFS filesystem outside Daytona, then register its metadata URL when creating the volume. Daytona validates the configuration and manages access and mounting, but it does not format or destroy the JuiceFS filesystem. Deleting the Daytona volume removes only the Daytona reference, so the external data remains available.
 
-`metaUrl` must be an absolute URL with a scheme. Do not embed a password in the URL; pass it through `credential.metaPassword`. The password is encrypted by the Daytona API and is never returned by volume or job APIs. `cacheSizeMiB` defaults to `10240` and controls the disposable local Runner cache. `capacityGiB` defaults to `50` and controls the filesystem capacity reported inside sandboxes.
+`metaUrl` must be an absolute URL with a scheme. Do not embed a password in the URL; pass it through `credential.metaPassword`. The password is encrypted by the Daytona API and is never returned by volume or job APIs. `cacheSizeMiB` defaults to `10240` and controls the disposable local Runner cache. `capacityGiB` defaults to `50`; before mounting, the Runner applies it with `juicefs config --capacity` when the filesystem setting differs. JuiceFS capacity is filesystem-wide, so every client and every Daytona Volume reference using the same metadata URL observes the same enforced capacity.
 
 Use the optional `bucket` URL when the object storage location recorded in JuiceFS metadata is not reachable from your Runners. Daytona passes this value to `juicefs mount --bucket`; when omitted, JuiceFS uses the bucket stored in its metadata. Bucket URLs may contain a path and query parameters, but must include a scheme and hostname and must not contain embedded credentials.
 

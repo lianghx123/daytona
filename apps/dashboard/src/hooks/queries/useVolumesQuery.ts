@@ -9,7 +9,7 @@ import { useApi } from '../useApi'
 import { useSelectedOrganization } from '../useSelectedOrganization'
 import { queryKeys } from './queryKeys'
 
-export function useVolumesQuery() {
+export function useVolumesQuery({ enabled = true }: { enabled?: boolean } = {}) {
   const { volumeApi } = useApi()
   const { selectedOrganization } = useSelectedOrganization()
 
@@ -23,6 +23,6 @@ export function useVolumesQuery() {
       const response = await volumeApi.listVolumes(selectedOrganization.id)
       return response.data
     },
-    enabled: !!selectedOrganization,
+    enabled: enabled && !!selectedOrganization,
   })
 }

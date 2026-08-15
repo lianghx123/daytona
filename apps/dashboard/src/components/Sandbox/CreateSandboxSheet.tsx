@@ -5,10 +5,22 @@
 
 import { CreateResourceButton } from '@/components/CreateResourceButton'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Sheet,
@@ -20,11 +32,14 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCreateSandboxMutation } from '@/hooks/mutations/useCreateSandboxMutation'
 import { useSetOrganizationDefaultRegionMutation } from '@/hooks/mutations/useSetOrganizationDefaultRegionMutation'
 import { useOrganizationUsageOverviewQuery } from '@/hooks/queries/useOrganizationUsageOverviewQuery'
 import { useAvailableRegionsQuery } from '@/hooks/queries/useRegionsQuery'
+import { useVolumesQuery } from '@/hooks/queries/useVolumesQuery'
 import { useConfig } from '@/hooks/useConfig'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { parseEnvFile } from '@/lib/env'
@@ -33,15 +48,25 @@ import { GPU_TYPE_LABELS } from '@/lib/gpu-types'
 import { EMPTY_REGIONS } from '@/lib/regions'
 import { imageNameSchema } from '@/lib/schema'
 import { cn, getRegionFullDisplayName } from '@/lib/utils'
-import { GpuType, OrganizationUserRoleEnum, RegionType, type Region, type SnapshotDto } from '@daytona/api-client'
+import { RoutePath } from '@/enums/RoutePath'
+import {
+  GpuType,
+  OrganizationUserRoleEnum,
+  RegionType,
+  VolumeState,
+  type Region,
+  type SnapshotDto,
+  type VolumeDto,
+} from '@daytona/api-client'
 import { Sandbox } from '@daytona/sdk'
 import { useForm, useStore } from '@tanstack/react-form'
 import { isAxiosError } from 'axios'
-import { Info, Minus, Plus, Upload } from 'lucide-react'
+import { AlertCircle, Check, ChevronsUpDown, Database, Info, Minus, Plus, Upload } from 'lucide-react'
 import { ComponentProps, Ref, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { NumericFormat } from 'react-number-format'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { Link } from 'react-router'
 import { Tooltip } from '../Tooltip'
 import { ScrollArea } from '../ui/scroll-area'
 import { SnapshotSelect } from './SnapshotSelect'
@@ -63,6 +88,23 @@ enum Source {
 const keyValuePairSchema = z.object({
   key: z.string(),
   value: z.string(),
+})
+
+const hasUnsafePathSegment = (value: string) => value.split('/').some((segment) => segment === '.' || segment === '..')
+
+const volumeMountSchema = z.object({
+  volumeId: z.string().trim().min(1, 'Select a volume.'),
+  mountPath: z
+    .string()
+    .trim()
+    .min(1, 'Mount path is required.')
+    .refine((value) => value.startsWith('/'), 'Mount path must be an absolute Unix path.')
+    .refine((value) => !hasUnsafePathSegment(value), 'Mount path cannot contain . or .. segments.'),
+  subpath: z
+    .string()
+    .trim()
+    .refine((value) => !value.startsWith('/'), 'Subpath must be relative.')
+    .refine((value) => !hasUnsafePathSegment(value), 'Subpath cannot contain . or .. segments.'),
 })
 
 const noDuplicateKeys = (pairs: { key: string; value: string }[] | undefined) => {
@@ -104,6 +146,16 @@ const buildBaseFormSchema = (maxCpu?: number, maxMemory?: number, maxDisk?: numb
     setAsDefaultRegion: z.boolean().optional(),
     gpu: z.boolean().optional(),
     gpuType: z.nativeEnum(GpuType).optional(),
+    volumes: z.array(volumeMountSchema).superRefine((mounts, ctx) => {
+      const seen = new Set<string>()
+      mounts.forEach((mount, index) => {
+        const path = mount.mountPath.trim()
+        if (path && seen.has(path)) {
+          ctx.addIssue({ code: 'custom', path: [index, 'mountPath'], message: 'Mount paths must be unique.' })
+        }
+        seen.add(path)
+      })
+    }),
   })
 
 const buildFormSchema = (maxCpu?: number, maxMemory?: number, maxDisk?: number) => {
@@ -158,6 +210,77 @@ const defaultValues: FormValues = {
   setAsDefaultRegion: false,
   gpu: false,
   gpuType: undefined,
+  volumes: [],
+}
+
+const getVolumeBackendLabel = (volume: VolumeDto) => (volume.backend?.type === 'juicefs' ? 'JuiceFS' : 'Managed S3')
+
+function VolumeSelect({
+  volumes,
+  value,
+  onChange,
+  invalid,
+  popoverContainer,
+}: {
+  volumes: VolumeDto[]
+  value: string
+  onChange: (volume: VolumeDto) => void
+  invalid: boolean
+  popoverContainer: HTMLElement | null
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = volumes.find((volume) => volume.id === value)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          aria-invalid={invalid}
+          className="w-full justify-between font-normal"
+        >
+          {selected ? (
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate">{selected.name}</span>
+              <Badge variant="secondary" className="shrink-0">
+                {getVolumeBackendLabel(selected)}
+              </Badge>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Select a volume</span>
+          )}
+          <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent container={popoverContainer} align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command>
+          <CommandInput placeholder="Search volumes..." />
+          <CommandList>
+            <CommandEmpty>No volume found.</CommandEmpty>
+            <CommandGroup>
+              {volumes.map((volume) => (
+                <CommandItem
+                  key={volume.id}
+                  value={`${volume.name} ${getVolumeBackendLabel(volume)}`}
+                  onSelect={() => {
+                    onChange(volume)
+                    setOpen(false)
+                  }}
+                >
+                  <Check className={cn('size-4', value === volume.id ? 'opacity-100' : 'opacity-0')} />
+                  <span className="min-w-0 flex-1 truncate">{volume.name}</span>
+                  <Badge variant="secondary">{getVolumeBackendLabel(volume)}</Badge>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 const InfoTooltipButton = ({ className, ...props }: ComponentProps<'button'>) => {
@@ -185,6 +308,8 @@ export const CreateSandboxSheet = ({
   const { data: regions = EMPTY_REGIONS, isLoading: loadingRegions } = useAvailableRegionsQuery(
     selectedOrganization?.id,
   )
+  const { data: volumes = [], isLoading: loadingVolumes, isError: volumesError } = useVolumesQuery({ enabled: open })
+  const readyVolumes = useMemo(() => volumes.filter((volume) => volume.state === VolumeState.READY), [volumes])
   const { reset: resetCreateSandboxMutation, ...createSandboxMutation } = useCreateSandboxMutation()
   const setDefaultRegionMutation = useSetOrganizationDefaultRegionMutation()
   const formRef = useRef<HTMLFormElement>(null)
@@ -279,6 +404,13 @@ export const CreateSandboxSheet = ({
         labels: Object.keys(labels).length > 0 ? labels : undefined,
         public: value.public || undefined,
         networkBlockAll: value.networkBlockAll || undefined,
+        volumes: value.volumes.length
+          ? value.volumes.map(({ volumeId, mountPath, subpath }) => ({
+              volumeId,
+              mountPath: mountPath.trim(),
+              subpath: subpath.trim() || undefined,
+            }))
+          : undefined,
       }
 
       let sandbox: Sandbox | undefined = undefined
@@ -865,6 +997,131 @@ export const CreateSandboxSheet = ({
                 )}
               </form.Field>
             )}
+            <FieldSet className="gap-3">
+              <FieldLegend>Volumes</FieldLegend>
+              {loadingVolumes ? (
+                <div className="flex flex-col gap-3">
+                  <Skeleton className="h-9 w-full" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              ) : volumesError ? (
+                <Alert variant="destructive">
+                  <AlertCircle />
+                  <AlertTitle>Unable to load volumes</AlertTitle>
+                  <AlertDescription>Refresh the page or try again before adding a volume mount.</AlertDescription>
+                </Alert>
+              ) : readyVolumes.length === 0 ? (
+                <Empty variant="neutral" className="p-5">
+                  <EmptyHeader>
+                    <Database className="size-5 text-muted-foreground" />
+                    <EmptyTitle>No ready volumes</EmptyTitle>
+                    <EmptyDescription>
+                      Create a volume before adding persistent storage to this Sandbox.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button asChild type="button" variant="outline" size="sm">
+                      <Link to={RoutePath.VOLUMES}>Go to Volumes</Link>
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              ) : (
+                <form.Field name="volumes">
+                  {(field) => {
+                    const hasErrors = field.state.meta.errors.length > 0
+                    return (
+                      <Field data-invalid={hasErrors}>
+                        <FieldGroup className="gap-4">
+                          {field.state.value.map((mount, index) => (
+                            <div key={index} className="rounded-lg border p-3">
+                              <div className="mb-3 flex items-center justify-between">
+                                <span className="text-sm font-medium">Mount {index + 1}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Remove volume mount ${index + 1}`}
+                                  className="size-8"
+                                  onClick={() => field.handleChange(field.state.value.filter((_, i) => i !== index))}
+                                >
+                                  <Minus className="size-4" />
+                                </Button>
+                              </div>
+                              <FieldGroup className="gap-3">
+                                <Field>
+                                  <FieldLabel>Volume</FieldLabel>
+                                  <VolumeSelect
+                                    volumes={readyVolumes}
+                                    value={mount.volumeId}
+                                    invalid={hasErrors && !mount.volumeId}
+                                    popoverContainer={popoverContainer}
+                                    onChange={(volume) => {
+                                      const updated = [...field.state.value]
+                                      updated[index] = {
+                                        ...updated[index],
+                                        volumeId: volume.id,
+                                        mountPath: updated[index].mountPath.trim()
+                                          ? updated[index].mountPath
+                                          : `/home/user/${volume.name}`,
+                                      }
+                                      field.handleChange(updated)
+                                    }}
+                                  />
+                                </Field>
+                                <Field>
+                                  <FieldLabel htmlFor={`volume-mount-path-${index}`}>Sandbox mount path</FieldLabel>
+                                  <Input
+                                    id={`volume-mount-path-${index}`}
+                                    aria-invalid={hasErrors}
+                                    value={mount.mountPath}
+                                    placeholder="/home/user/data"
+                                    onChange={(event) => {
+                                      const updated = [...field.state.value]
+                                      updated[index] = { ...updated[index], mountPath: event.target.value }
+                                      field.handleChange(updated)
+                                    }}
+                                  />
+                                </Field>
+                                <Field>
+                                  <FieldLabel htmlFor={`volume-subpath-${index}`}>Volume subpath (optional)</FieldLabel>
+                                  <Input
+                                    id={`volume-subpath-${index}`}
+                                    aria-invalid={hasErrors}
+                                    value={mount.subpath}
+                                    placeholder="projects/my-project"
+                                    onChange={(event) => {
+                                      const updated = [...field.state.value]
+                                      updated[index] = { ...updated[index], subpath: event.target.value }
+                                      field.handleChange(updated)
+                                    }}
+                                  />
+                                </Field>
+                              </FieldGroup>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-fit"
+                            onClick={() =>
+                              field.handleChange([...field.state.value, { volumeId: '', mountPath: '', subpath: '' }])
+                            }
+                          >
+                            <Plus className="size-4" />
+                            Add Volume
+                          </Button>
+                        </FieldGroup>
+                        <FieldDescription>
+                          Mount persistent storage at an absolute path inside the Sandbox.
+                        </FieldDescription>
+                        {hasErrors && <FieldError errors={field.state.meta.errors} />}
+                      </Field>
+                    )
+                  }}
+                </form.Field>
+              )}
+            </FieldSet>
             <div className="flex flex-col gap-2">
               <Label className="text-sm font-medium">Lifecycle</Label>
               <div className="flex flex-col gap-2">

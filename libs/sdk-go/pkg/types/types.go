@@ -133,14 +133,23 @@ type PaginatedSnapshots struct {
 
 // Volume represents a Daytona volume
 type Volume struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	OrganizationID string    `json:"organizationId"`
-	State          string    `json:"state"`
-	ErrorReason    *string   `json:"errorReason,omitempty"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
-	LastUsedAt     time.Time `json:"lastUsedAt,omitempty"`
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	OrganizationID string         `json:"organizationId"`
+	State          string         `json:"state"`
+	ErrorReason    *string        `json:"errorReason,omitempty"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt"`
+	LastUsedAt     time.Time      `json:"lastUsedAt,omitempty"`
+	Backend        *VolumeBackend `json:"backend,omitempty"`
+	Lifecycle      string         `json:"lifecycle"`
+}
+
+// VolumeBackend is the sanitized storage configuration returned for a volume.
+type VolumeBackend struct {
+	Type         string   `json:"type"`
+	MetaURL      *string  `json:"metaUrl,omitempty"`
+	CacheSizeMiB *float32 `json:"cacheSizeMiB,omitempty"`
 }
 
 // Snapshot represents a Daytona snapshot

@@ -19,6 +19,7 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import io.daytona.api.client.model.CreateVolumeBackendDto;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -55,6 +56,11 @@ public class CreateVolume {
   @javax.annotation.Nonnull
   private String name;
 
+  public static final String SERIALIZED_NAME_BACKEND = "backend";
+  @SerializedName(SERIALIZED_NAME_BACKEND)
+  @javax.annotation.Nullable
+  private CreateVolumeBackendDto backend;
+
   public CreateVolume() {
   }
 
@@ -74,6 +80,25 @@ public class CreateVolume {
 
   public void setName(@javax.annotation.Nonnull String name) {
     this.name = name;
+  }
+
+
+  public CreateVolume backend(@javax.annotation.Nullable CreateVolumeBackendDto backend) {
+    this.backend = backend;
+    return this;
+  }
+
+  /**
+   * Storage backend. Omit to create a Daytona-managed S3 volume.
+   * @return backend
+   */
+  @javax.annotation.Nullable
+  public CreateVolumeBackendDto getBackend() {
+    return backend;
+  }
+
+  public void setBackend(@javax.annotation.Nullable CreateVolumeBackendDto backend) {
+    this.backend = backend;
   }
 
   /**
@@ -131,13 +156,14 @@ public class CreateVolume {
       return false;
     }
     CreateVolume createVolume = (CreateVolume) o;
-    return Objects.equals(this.name, createVolume.name)&&
+    return Objects.equals(this.name, createVolume.name) &&
+        Objects.equals(this.backend, createVolume.backend)&&
         Objects.equals(this.additionalProperties, createVolume.additionalProperties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, additionalProperties);
+    return Objects.hash(name, backend, additionalProperties);
   }
 
   @Override
@@ -145,6 +171,7 @@ public class CreateVolume {
     StringBuilder sb = new StringBuilder();
     sb.append("class CreateVolume {\n");
     sb.append("    name: ").append(toIndentedString(name)).append("\n");
+    sb.append("    backend: ").append(toIndentedString(backend)).append("\n");
     sb.append("    additionalProperties: ").append(toIndentedString(additionalProperties)).append("\n");
     sb.append("}");
     return sb.toString();
@@ -164,7 +191,7 @@ public class CreateVolume {
 
   static {
     // a set of all properties/fields (JSON key names)
-    openapiFields = new HashSet<String>(Arrays.asList("name"));
+    openapiFields = new HashSet<String>(Arrays.asList("name", "backend"));
 
     // a set of required properties/fields (JSON key names)
     openapiRequiredFields = new HashSet<String>(Arrays.asList("name"));
@@ -192,6 +219,10 @@ public class CreateVolume {
         JsonObject jsonObj = jsonElement.getAsJsonObject();
       if (!jsonObj.get("name").isJsonPrimitive()) {
         throw new IllegalArgumentException(String.format(java.util.Locale.ROOT, "Expected the field `name` to be a primitive type in the JSON string but got `%s`", jsonObj.get("name").toString()));
+      }
+      // validate the optional field `backend`
+      if (jsonObj.get("backend") != null && !jsonObj.get("backend").isJsonNull()) {
+        CreateVolumeBackendDto.validateJsonElement(jsonObj.get("backend"));
       }
   }
 

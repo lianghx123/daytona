@@ -27,6 +27,10 @@ module DaytonaApiClient
     # Volume state
     attr_accessor :state
 
+    attr_accessor :backend
+
+    attr_accessor :lifecycle
+
     # Creation timestamp
     attr_accessor :created_at
 
@@ -68,6 +72,8 @@ module DaytonaApiClient
         :'name' => :'name',
         :'organization_id' => :'organizationId',
         :'state' => :'state',
+        :'backend' => :'backend',
+        :'lifecycle' => :'lifecycle',
         :'created_at' => :'createdAt',
         :'updated_at' => :'updatedAt',
         :'last_used_at' => :'lastUsedAt',
@@ -92,6 +98,8 @@ module DaytonaApiClient
         :'name' => :'String',
         :'organization_id' => :'String',
         :'state' => :'VolumeState',
+        :'backend' => :'VolumeBackendDto',
+        :'lifecycle' => :'VolumeLifecycle',
         :'created_at' => :'String',
         :'updated_at' => :'String',
         :'last_used_at' => :'String',
@@ -147,6 +155,18 @@ module DaytonaApiClient
         self.state = nil
       end
 
+      if attributes.key?(:'backend')
+        self.backend = attributes[:'backend']
+      else
+        self.backend = nil
+      end
+
+      if attributes.key?(:'lifecycle')
+        self.lifecycle = attributes[:'lifecycle']
+      else
+        self.lifecycle = nil
+      end
+
       if attributes.key?(:'created_at')
         self.created_at = attributes[:'created_at']
       else
@@ -191,6 +211,14 @@ module DaytonaApiClient
         invalid_properties.push('invalid value for "state", state cannot be nil.')
       end
 
+      if @backend.nil?
+        invalid_properties.push('invalid value for "backend", backend cannot be nil.')
+      end
+
+      if @lifecycle.nil?
+        invalid_properties.push('invalid value for "lifecycle", lifecycle cannot be nil.')
+      end
+
       if @created_at.nil?
         invalid_properties.push('invalid value for "created_at", created_at cannot be nil.')
       end
@@ -210,6 +238,8 @@ module DaytonaApiClient
       return false if @name.nil?
       return false if @organization_id.nil?
       return false if @state.nil?
+      return false if @backend.nil?
+      return false if @lifecycle.nil?
       return false if @created_at.nil?
       return false if @updated_at.nil?
       true
@@ -256,6 +286,26 @@ module DaytonaApiClient
     end
 
     # Custom attribute writer method with validation
+    # @param [Object] backend Value to be assigned
+    def backend=(backend)
+      if backend.nil?
+        fail ArgumentError, 'backend cannot be nil'
+      end
+
+      @backend = backend
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] lifecycle Value to be assigned
+    def lifecycle=(lifecycle)
+      if lifecycle.nil?
+        fail ArgumentError, 'lifecycle cannot be nil'
+      end
+
+      @lifecycle = lifecycle
+    end
+
+    # Custom attribute writer method with validation
     # @param [Object] created_at Value to be assigned
     def created_at=(created_at)
       if created_at.nil?
@@ -284,6 +334,8 @@ module DaytonaApiClient
           name == o.name &&
           organization_id == o.organization_id &&
           state == o.state &&
+          backend == o.backend &&
+          lifecycle == o.lifecycle &&
           created_at == o.created_at &&
           updated_at == o.updated_at &&
           last_used_at == o.last_used_at &&
@@ -299,7 +351,7 @@ module DaytonaApiClient
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [id, name, organization_id, state, created_at, updated_at, last_used_at, error_reason].hash
+      [id, name, organization_id, state, backend, lifecycle, created_at, updated_at, last_used_at, error_reason].hash
     end
 
     # Builds the object from hash

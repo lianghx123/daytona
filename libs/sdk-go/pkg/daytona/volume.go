@@ -39,6 +39,11 @@ type VolumeService struct {
 	otel   *otelState
 }
 
+// CreateVolumeOptions configures the storage backend used by a new volume.
+type CreateVolumeOptions struct {
+	Backend *apiclient.CreateVolumeBackendDto
+}
+
 // NewVolumeService creates a new VolumeService.
 //
 // This is typically called internally by the SDK when creating a [Client].
@@ -128,10 +133,18 @@ func (v *VolumeService) Get(ctx context.Context, name string) (*types.Volume, er
 //
 // Returns the created [types.Volume] or an error.
 func (v *VolumeService) Create(ctx context.Context, name string) (*types.Volume, error) {
+	return v.CreateWithOptions(ctx, name, nil)
+}
+
+// CreateWithOptions creates a new persistent storage volume with an optional backend configuration.
+func (v *VolumeService) CreateWithOptions(ctx context.Context, name string, options *CreateVolumeOptions) (*types.Volume, error) {
 	return withInstrumentation(ctx, v.otel, "Volume", "Create", func(ctx context.Context) (*types.Volume, error) {
 		authCtx := v.client.getAuthContext(ctx)
 
 		req := apiclient.NewCreateVolume(name)
+		if options != nil && options.Backend != nil {
+			req.SetBackend(*options.Backend)
+		}
 		volumeDto, httpResp, err := v.client.apiClient.VolumesAPI.CreateVolume(authCtx).CreateVolume(*req).Execute()
 		if err != nil {
 			return nil, errors.ConvertAPIError(err, httpResp)
@@ -249,6 +262,14 @@ func volumeDtoToVolume(dto *apiclient.VolumeDto) *types.Volume {
 		State:          string(dto.GetState()), // Convert VolumeState enum to string
 		CreatedAt:      createdAt,
 		UpdatedAt:      updatedAt,
+		Lifecycle:      string(dto.GetLifecycle()),
+	}
+	if backend, ok := dto.GetBackendOk(); ok {
+		volume.Backend = &types.VolumeBackend{
+			Type:         string(backend.GetType()),
+			MetaURL:      backend.MetaUrl,
+			CacheSizeMiB: backend.CacheSizeMiB,
+		}
 	}
 
 	// Handle nullable LastUsedAt

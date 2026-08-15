@@ -22,6 +22,11 @@ import { TypedConfigService } from '../../config/typed-config.service'
 import { RedisLockProvider } from '../common/redis-lock.provider'
 import { SandboxRepository } from '../repositories/sandbox.repository'
 import { SandboxDesiredState } from '../enums/sandbox-desired-state.enum'
+import { DataSource } from 'typeorm'
+import { VolumeBackendType } from '../enums/volume-backend-type.enum'
+import { VolumeLifecycle } from '../enums/volume-lifecycle.enum'
+import { DEFAULT_JUICEFS_CACHE_SIZE_MIB } from '../dto/create-volume.dto'
+import { VolumeCredentialService } from './volume-credential.service'
 
 @Injectable()
 export class VolumeService {
@@ -35,7 +40,31 @@ export class VolumeService {
     private readonly organizationUsageService: OrganizationUsageService,
     private readonly configService: TypedConfigService,
     private readonly redisLockProvider: RedisLockProvider,
+    private readonly dataSource: DataSource,
+    private readonly volumeCredentialService: VolumeCredentialService,
   ) {}
+
+  private validateJuiceFSMetaUrl(metaUrl?: string): string {
+    if (!metaUrl?.trim()) {
+      throw new BadRequestError('JuiceFS metaUrl is required')
+    }
+
+    let parsed: URL
+    try {
+      parsed = new URL(metaUrl)
+    } catch {
+      throw new BadRequestError('JuiceFS metaUrl must be an absolute URL with a scheme')
+    }
+
+    if (!parsed.protocol || parsed.protocol === ':') {
+      throw new BadRequestError('JuiceFS metaUrl must include a scheme')
+    }
+    if (parsed.password) {
+      throw new BadRequestError('JuiceFS metaUrl must not contain a password; use backend.credential.metaPassword')
+    }
+
+    return metaUrl.trim()
+  }
 
   private async validateOrganizationQuotas(
     organization: Organization,
@@ -75,7 +104,8 @@ export class VolumeService {
   }
 
   async create(organization: Organization, createVolumeDto: CreateVolumeDto): Promise<Volume> {
-    if (!this.configService.get('s3.endpoint')) {
+    const backendType = createVolumeDto.backend?.type ?? VolumeBackendType.MANAGED_S3
+    if (backendType === VolumeBackendType.MANAGED_S3 && !this.configService.get('s3.endpoint')) {
       throw new ServiceUnavailableException('Object storage is not configured')
     }
 
@@ -92,31 +122,49 @@ export class VolumeService {
         pendingVolumeCountIncrement = newVolumeCount
       }
 
-      const volume = new Volume()
+      const savedVolume = await this.dataSource.transaction(async (manager) => {
+        const repository = manager.getRepository(Volume)
+        const volume = new Volume()
 
-      // Generate ID
-      volume.id = uuidv4()
+        volume.id = uuidv4()
+        volume.name = createVolumeDto.name || volume.id
 
-      // Set name from DTO or use ID as default
-      volume.name = createVolumeDto.name || volume.id
+        const existingVolume = await repository.findOne({
+          where: {
+            organizationId: organization.id,
+            name: volume.name,
+            state: Not(VolumeState.DELETED),
+          },
+        })
 
-      // Check if volume with same name already exists for organization
-      const existingVolume = await this.volumeRepository.findOne({
-        where: {
-          organizationId: organization.id,
-          name: volume.name,
-          state: Not(VolumeState.DELETED),
-        },
+        if (existingVolume) {
+          throw new BadRequestError(`Volume with name ${volume.name} already exists`)
+        }
+
+        volume.organizationId = organization.id
+        volume.state = VolumeState.PENDING_CREATE
+        volume.backendType = backendType
+
+        if (backendType === VolumeBackendType.JUICEFS) {
+          const metaUrl = this.validateJuiceFSMetaUrl(createVolumeDto.backend?.metaUrl)
+          volume.lifecycle = VolumeLifecycle.EXTERNAL
+          volume.backendConfig = {
+            metaUrl,
+            cacheSizeMiB: createVolumeDto.backend?.cacheSizeMiB ?? DEFAULT_JUICEFS_CACHE_SIZE_MIB,
+          }
+
+          const metaPassword = createVolumeDto.backend?.credential?.metaPassword
+          if (metaPassword) {
+            const credential = await this.volumeCredentialService.create({ metaPassword }, manager)
+            volume.credentialRef = credential.id
+          }
+        } else {
+          volume.lifecycle = VolumeLifecycle.MANAGED
+          volume.backendConfig = {}
+        }
+
+        return repository.save(volume)
       })
-
-      if (existingVolume) {
-        throw new BadRequestError(`Volume with name ${volume.name} already exists`)
-      }
-
-      volume.organizationId = organization.id
-      volume.state = VolumeState.PENDING_CREATE
-
-      const savedVolume = await this.volumeRepository.save(volume)
       this.logger.debug(`Created volume ${savedVolume.id} for organization ${organization.id}`)
       return savedVolume
     } catch (error) {

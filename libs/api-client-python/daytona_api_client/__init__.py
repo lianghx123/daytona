@@ -88,6 +88,7 @@ if TYPE_CHECKING:
     from daytona_api_client.models.create_snapshot import CreateSnapshot
     from daytona_api_client.models.create_user import CreateUser
     from daytona_api_client.models.create_volume import CreateVolume
+    from daytona_api_client.models.create_volume_backend_dto import CreateVolumeBackendDto
     from daytona_api_client.models.daytona_configuration import DaytonaConfiguration
     from daytona_api_client.models.display_info_response import DisplayInfoResponse
     from daytona_api_client.models.docker_registry import DockerRegistry
@@ -114,6 +115,7 @@ if TYPE_CHECKING:
     from daytona_api_client.models.job import Job
     from daytona_api_client.models.job_status import JobStatus
     from daytona_api_client.models.job_type import JobType
+    from daytona_api_client.models.juice_fs_volume_credential_dto import JuiceFSVolumeCredentialDto
     from daytona_api_client.models.keyboard_hotkey_request import KeyboardHotkeyRequest
     from daytona_api_client.models.keyboard_press_request import KeyboardPressRequest
     from daytona_api_client.models.keyboard_type_request import KeyboardTypeRequest
@@ -229,7 +231,10 @@ if TYPE_CHECKING:
     from daytona_api_client.models.user import User
     from daytona_api_client.models.user_home_dir_response import UserHomeDirResponse
     from daytona_api_client.models.user_public_key import UserPublicKey
+    from daytona_api_client.models.volume_backend_dto import VolumeBackendDto
+    from daytona_api_client.models.volume_backend_type import VolumeBackendType
     from daytona_api_client.models.volume_dto import VolumeDto
+    from daytona_api_client.models.volume_lifecycle import VolumeLifecycle
     from daytona_api_client.models.volume_state import VolumeState
     from daytona_api_client.models.webhook_app_portal_access import WebhookAppPortalAccess
     from daytona_api_client.models.webhook_event import WebhookEvent
@@ -303,6 +308,7 @@ _DYNAMIC_IMPORTS: dict[str, str] = {
     "CreateSnapshot": "daytona_api_client.models.create_snapshot",
     "CreateUser": "daytona_api_client.models.create_user",
     "CreateVolume": "daytona_api_client.models.create_volume",
+    "CreateVolumeBackendDto": "daytona_api_client.models.create_volume_backend_dto",
     "DaytonaConfiguration": "daytona_api_client.models.daytona_configuration",
     "DisplayInfoResponse": "daytona_api_client.models.display_info_response",
     "DockerRegistry": "daytona_api_client.models.docker_registry",
@@ -329,6 +335,7 @@ _DYNAMIC_IMPORTS: dict[str, str] = {
     "Job": "daytona_api_client.models.job",
     "JobStatus": "daytona_api_client.models.job_status",
     "JobType": "daytona_api_client.models.job_type",
+    "JuiceFSVolumeCredentialDto": "daytona_api_client.models.juice_fs_volume_credential_dto",
     "KeyboardHotkeyRequest": "daytona_api_client.models.keyboard_hotkey_request",
     "KeyboardPressRequest": "daytona_api_client.models.keyboard_press_request",
     "KeyboardTypeRequest": "daytona_api_client.models.keyboard_type_request",
@@ -444,7 +451,10 @@ _DYNAMIC_IMPORTS: dict[str, str] = {
     "User": "daytona_api_client.models.user",
     "UserHomeDirResponse": "daytona_api_client.models.user_home_dir_response",
     "UserPublicKey": "daytona_api_client.models.user_public_key",
+    "VolumeBackendDto": "daytona_api_client.models.volume_backend_dto",
+    "VolumeBackendType": "daytona_api_client.models.volume_backend_type",
     "VolumeDto": "daytona_api_client.models.volume_dto",
+    "VolumeLifecycle": "daytona_api_client.models.volume_lifecycle",
     "VolumeState": "daytona_api_client.models.volume_state",
     "WebhookAppPortalAccess": "daytona_api_client.models.webhook_app_portal_access",
     "WebhookEvent": "daytona_api_client.models.webhook_event",
@@ -532,6 +542,7 @@ __all__ = [
     "CreateSnapshot",
     "CreateUser",
     "CreateVolume",
+    "CreateVolumeBackendDto",
     "DaytonaConfiguration",
     "DisplayInfoResponse",
     "DockerRegistry",
@@ -558,6 +569,7 @@ __all__ = [
     "Job",
     "JobStatus",
     "JobType",
+    "JuiceFSVolumeCredentialDto",
     "KeyboardHotkeyRequest",
     "KeyboardPressRequest",
     "KeyboardTypeRequest",
@@ -673,7 +685,10 @@ __all__ = [
     "User",
     "UserHomeDirResponse",
     "UserPublicKey",
+    "VolumeBackendDto",
+    "VolumeBackendType",
     "VolumeDto",
+    "VolumeLifecycle",
     "VolumeState",
     "WebhookAppPortalAccess",
     "WebhookEvent",

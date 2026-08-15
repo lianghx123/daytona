@@ -4,7 +4,7 @@
  */
 
 import { VolumesApi } from '@daytona/api-client'
-import type { VolumeDto } from '@daytona/api-client'
+import type { CreateVolumeBackendDto, VolumeDto } from '@daytona/api-client'
 import { DaytonaNotFoundError } from './errors/DaytonaError'
 import { WithInstrumentation } from './utils/otel.decorator'
 
@@ -81,6 +81,7 @@ export class VolumeService {
    * Creates a new Volume with the specified name.
    *
    * @param {string} name - Name for the new Volume
+   * @param {CreateVolumeBackendDto} backend - Optional storage backend configuration
    * @returns {Promise<Volume>} The newly created Volume
    * @throws {Error} If the Volume cannot be created
    *
@@ -90,8 +91,8 @@ export class VolumeService {
    * console.log(`Created volume ${volume.name} with ID ${volume.id}`);
    */
   @WithInstrumentation()
-  async create(name: string): Promise<Volume> {
-    const response = await this.volumesApi.createVolume({ name })
+  async create(name: string, backend?: CreateVolumeBackendDto): Promise<Volume> {
+    const response = await this.volumesApi.createVolume(backend ? { name, backend } : { name })
     return response.data as Volume
   }
 

@@ -714,11 +714,11 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Metadata",
-                        "name": "metadata",
+                        "description": "Start options",
+                        "name": "sandbox",
                         "in": "body",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/StartSandboxDTO"
                         }
                     },
                     {
@@ -1638,6 +1638,9 @@ const docTemplate = `{
                 "userId": {
                     "type": "string"
                 },
+                "volumeMountCredentials": {
+                    "$ref": "#/definitions/dto.VolumeMountCredentialsDTO"
+                },
                 "volumes": {
                     "type": "array",
                     "items": {
@@ -1817,6 +1820,9 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "string"
+                },
+                "volumeMountCredentials": {
+                    "$ref": "#/definitions/dto.VolumeMountCredentialsDTO"
                 },
                 "volumes": {
                     "type": "array",
@@ -2021,6 +2027,26 @@ const docTemplate = `{
                 }
             }
         },
+        "StartSandboxDTO": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "volumeMountCredentials": {
+                    "$ref": "#/definitions/dto.VolumeMountCredentialsDTO"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.VolumeDTO"
+                    }
+                }
+            }
+        },
         "StartSandboxResponse": {
             "type": "object",
             "properties": {
@@ -2069,9 +2095,53 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.JuiceFSVolumeMountCredentialDTO": {
+            "type": "object",
+            "properties": {
+                "metaPassword": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.JuiceFSVolumeSourceDTO": {
+            "type": "object",
+            "required": [
+                "metaUrl"
+            ],
+            "properties": {
+                "cacheSizeMiB": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "metaUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.VolumeBackendDTO": {
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "juicefs": {
+                    "$ref": "#/definitions/dto.JuiceFSVolumeSourceDTO"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "managed_s3",
+                        "juicefs"
+                    ]
+                }
+            }
+        },
         "dto.VolumeDTO": {
             "type": "object",
             "properties": {
+                "backend": {
+                    "$ref": "#/definitions/dto.VolumeBackendDTO"
+                },
                 "mountPath": {
                     "type": "string"
                 },
@@ -2081,6 +2151,20 @@ const docTemplate = `{
                 "volumeId": {
                     "type": "string"
                 }
+            }
+        },
+        "dto.VolumeMountCredentialDTO": {
+            "type": "object",
+            "properties": {
+                "juicefs": {
+                    "$ref": "#/definitions/dto.JuiceFSVolumeMountCredentialDTO"
+                }
+            }
+        },
+        "dto.VolumeMountCredentialsDTO": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/dto.VolumeMountCredentialDTO"
             }
         },
         "enums.BackupState": {

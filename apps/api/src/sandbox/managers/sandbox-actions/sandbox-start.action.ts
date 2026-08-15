@@ -561,7 +561,7 @@ export class SandboxStartAction extends SandboxAction {
       }
 
       try {
-        await runnerAdapter.startSandbox(sandbox.id, sandbox.authToken, metadata)
+        await runnerAdapter.startSandbox(sandbox, metadata)
       } catch (error) {
         // Check against a list of substrings that should trigger an automatic recovery
         if (error?.message) {
@@ -603,7 +603,7 @@ export class SandboxStartAction extends SandboxAction {
     }
 
     const runnerAdapter = await this.runnerAdapterFactory.create(runner)
-    await runnerAdapter.startSandbox(sandbox.id, sandbox.authToken)
+    await runnerAdapter.startSandbox(sandbox)
     await this.updateSandboxState(sandbox, SandboxState.RESUMING, lockCode)
     return SYNC_AGAIN
   }

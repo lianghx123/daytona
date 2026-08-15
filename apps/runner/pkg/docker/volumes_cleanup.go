@@ -111,6 +111,7 @@ func (d *DockerClient) unmountAndRemoveDir(ctx context.Context, path string) {
 		if err := os.RemoveAll(cleanPath); err != nil {
 			d.logger.ErrorContext(ctx, "Failed to remove directory", "path", cleanPath, "error", err)
 		}
+		d.removeJuiceFSCache(ctx, cleanPath)
 		return
 	}
 
@@ -119,6 +120,7 @@ func (d *DockerClient) unmountAndRemoveDir(ctx context.Context, path string) {
 		if err := os.Remove(cleanPath); err != nil {
 			d.logger.ErrorContext(ctx, "Failed to remove directory", "path", cleanPath, "error", err)
 		}
+		d.removeJuiceFSCache(ctx, cleanPath)
 		return
 	}
 
@@ -127,6 +129,17 @@ func (d *DockerClient) unmountAndRemoveDir(ctx context.Context, path string) {
 	d.logger.DebugContext(ctx, "Renaming non-empty volume directory", "path", garbagePath)
 	if err := os.Rename(cleanPath, garbagePath); err != nil {
 		d.logger.ErrorContext(ctx, "Failed to rename directory", "path", cleanPath, "error", err)
+	}
+}
+
+func (d *DockerClient) removeJuiceFSCache(ctx context.Context, mountPath string) {
+	volumeId := strings.TrimPrefix(filepath.Base(mountPath), volumeMountPrefix)
+	if !isValidVolumeId(volumeId) {
+		return
+	}
+	cachePath := filepath.Join("/var/lib/daytona/juicefs-cache", volumeId)
+	if err := os.RemoveAll(cachePath); err != nil {
+		d.logger.WarnContext(ctx, "failed to remove JuiceFS cache", "path", cachePath, "error", err)
 	}
 }
 

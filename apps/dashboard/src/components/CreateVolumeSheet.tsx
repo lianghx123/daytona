@@ -5,7 +5,7 @@
 
 import { CreateResourceButton } from '@/components/CreateResourceButton'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -18,6 +18,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useCreateVolumeMutation } from '@/hooks/mutations/useCreateVolumeMutation'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { handleApiError } from '@/lib/error-handling'
@@ -26,14 +27,44 @@ import { Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } fr
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-const formSchema = z.object({
-  name: z.string().trim().min(1, 'Volume name is required'),
-})
+const formSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Volume name is required'),
+    backendType: z.enum(['managed_s3', 'juicefs']),
+    metaUrl: z.string(),
+    cacheSizeMiB: z.string(),
+    metaPassword: z.string(),
+  })
+  .superRefine((value, context) => {
+    if (value.backendType !== 'juicefs') return
+    if (!value.metaUrl.trim()) {
+      context.addIssue({ code: 'custom', path: ['metaUrl'], message: 'Metadata URL is required' })
+    } else {
+      try {
+        const url = new URL(value.metaUrl)
+        if (!url.protocol) throw new Error()
+        if (url.password) {
+          context.addIssue({ code: 'custom', path: ['metaUrl'], message: 'Put the password in the password field' })
+        }
+      } catch {
+        context.addIssue({ code: 'custom', path: ['metaUrl'], message: 'Enter an absolute URL with a scheme' })
+      }
+    }
+
+    const cacheSize = Number(value.cacheSizeMiB)
+    if (!Number.isInteger(cacheSize) || cacheSize < 0) {
+      context.addIssue({ code: 'custom', path: ['cacheSizeMiB'], message: 'Cache size must be a non-negative integer' })
+    }
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
 const defaultValues: FormValues = {
   name: '',
+  backendType: 'managed_s3',
+  metaUrl: '',
+  cacheSizeMiB: '10240',
+  metaPassword: '',
 }
 
 export const CreateVolumeSheet = ({
@@ -81,6 +112,15 @@ export const CreateVolumeSheet = ({
         await createVolumeMutation.mutateAsync({
           volume: {
             name: volumeName,
+            backend:
+              value.backendType === 'juicefs'
+                ? {
+                    type: 'juicefs',
+                    metaUrl: value.metaUrl.trim(),
+                    cacheSizeMiB: Number(value.cacheSizeMiB),
+                    credential: value.metaPassword ? { metaPassword: value.metaPassword } : undefined,
+                  }
+                : { type: 'managed_s3' },
           },
           organizationId: selectedOrganization.id,
         })
@@ -106,7 +146,13 @@ export const CreateVolumeSheet = ({
   }, [open, resetState])
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (!nextOpen) resetState()
+      }}
+    >
       <SheetTrigger asChild>
         <CreateResourceButton resource="Volume" disabled={disabled} className={className} />
       </SheetTrigger>
@@ -120,36 +166,129 @@ export const CreateVolumeSheet = ({
           <form
             ref={formRef}
             id="create-volume-form"
-            className="space-y-6 p-5"
+            className="p-5"
             onSubmit={(e) => {
               e.preventDefault()
               e.stopPropagation()
               form.handleSubmit()
             }}
           >
-            <form.Field name="name">
-              {(field) => {
-                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>Volume Name</FieldLabel>
-                    <Input
-                      aria-invalid={isInvalid}
-                      id={field.name}
-                      name={field.name}
+            <FieldGroup>
+              <form.Field name="name">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Volume Name</FieldLabel>
+                      <Input
+                        aria-invalid={isInvalid}
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="my-volume"
+                      />
+                      <FieldDescription>Used to mount this volume in your sandboxes.</FieldDescription>
+                      {field.state.meta.errors.length > 0 && field.state.meta.isTouched && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+              <form.Field name="backendType">
+                {(field) => (
+                  <Field>
+                    <FieldLabel>Storage Backend</FieldLabel>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
                       value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      placeholder="my-volume"
-                    />
-                    <FieldDescription>Used to mount this volume in your sandboxes.</FieldDescription>
-                    {field.state.meta.errors.length > 0 && field.state.meta.isTouched && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
+                      onValueChange={(value) => value && field.handleChange(value as FormValues['backendType'])}
+                    >
+                      <ToggleGroupItem value="managed_s3" aria-label="Managed S3">
+                        Managed S3
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="juicefs" aria-label="JuiceFS">
+                        JuiceFS
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    <FieldDescription>
+                      Managed S3 is owned by Daytona. JuiceFS references an existing external filesystem.
+                    </FieldDescription>
                   </Field>
-                )
-              }}
-            </form.Field>
+                )}
+              </form.Field>
+              <form.Subscribe selector={(state) => state.values.backendType}>
+                {(backendType) =>
+                  backendType === 'juicefs' ? (
+                    <FieldGroup>
+                      <form.Field name="metaUrl">
+                        {(field) => {
+                          const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                          return (
+                            <Field data-invalid={isInvalid}>
+                              <FieldLabel htmlFor={field.name}>Metadata URL</FieldLabel>
+                              <Input
+                                aria-invalid={isInvalid}
+                                id={field.name}
+                                value={field.state.value}
+                                onBlur={field.handleBlur}
+                                onChange={(event) => field.handleChange(event.target.value)}
+                                placeholder="redis://juicefs-meta:6379/12"
+                              />
+                              <FieldDescription>
+                                The JuiceFS filesystem must already be formatted. Do not include a password in this URL.
+                              </FieldDescription>
+                              {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                            </Field>
+                          )
+                        }}
+                      </form.Field>
+                      <form.Field name="cacheSizeMiB">
+                        {(field) => {
+                          const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                          return (
+                            <Field data-invalid={isInvalid}>
+                              <FieldLabel htmlFor={field.name}>Runner Cache Size (MiB)</FieldLabel>
+                              <Input
+                                aria-invalid={isInvalid}
+                                id={field.name}
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={field.state.value}
+                                onBlur={field.handleBlur}
+                                onChange={(event) => field.handleChange(event.target.value)}
+                              />
+                              {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                            </Field>
+                          )
+                        }}
+                      </form.Field>
+                      <form.Field name="metaPassword">
+                        {(field) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>Metadata Password</FieldLabel>
+                            <Input
+                              id={field.name}
+                              type="password"
+                              autoComplete="new-password"
+                              value={field.state.value}
+                              onChange={(event) => field.handleChange(event.target.value)}
+                            />
+                            <FieldDescription>
+                              Encrypted by Daytona and sent only to the Runner mount process.
+                            </FieldDescription>
+                          </Field>
+                        )}
+                      </form.Field>
+                    </FieldGroup>
+                  ) : null
+                }
+              </form.Subscribe>
+            </FieldGroup>
           </form>
         </ScrollArea>
 

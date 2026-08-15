@@ -42,6 +42,8 @@ import type { SandboxInfoResponse } from '../models';
 // @ts-ignore
 import type { SnapshotInfoResponse } from '../models';
 // @ts-ignore
+import type { StartSandboxDTO } from '../models';
+// @ts-ignore
 import type { StartSandboxResponse } from '../models';
 // @ts-ignore
 import type { StopSandboxDTO } from '../models';
@@ -416,11 +418,11 @@ export const SandboxApiAxiosParamCreator = function (configuration?: Configurati
          * @summary Start sandbox
          * @param {string} sandboxId Sandbox ID
          * @param {string} [token] Auth token
-         * @param {object} [metadata] Metadata
+         * @param {StartSandboxDTO} [sandbox] Start options
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        start: async (sandboxId: string, token?: string, metadata?: object, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        start: async (sandboxId: string, token?: string, sandbox?: StartSandboxDTO, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'sandboxId' is not null or undefined
             assertParamExists('start', 'sandboxId', sandboxId)
             const localVarPath = `/sandboxes/{sandboxId}/start`
@@ -449,7 +451,7 @@ export const SandboxApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(metadata, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(sandbox, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -674,12 +676,12 @@ export const SandboxApiFp = function(configuration?: Configuration) {
          * @summary Start sandbox
          * @param {string} sandboxId Sandbox ID
          * @param {string} [token] Auth token
-         * @param {object} [metadata] Metadata
+         * @param {StartSandboxDTO} [sandbox] Start options
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async start(sandboxId: string, token?: string, metadata?: object, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<StartSandboxResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.start(sandboxId, token, metadata, options);
+        async start(sandboxId: string, token?: string, sandbox?: StartSandboxDTO, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<StartSandboxResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.start(sandboxId, token, sandbox, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['SandboxApi.start']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -821,12 +823,12 @@ export const SandboxApiFactory = function (configuration?: Configuration, basePa
          * @summary Start sandbox
          * @param {string} sandboxId Sandbox ID
          * @param {string} [token] Auth token
-         * @param {object} [metadata] Metadata
+         * @param {StartSandboxDTO} [sandbox] Start options
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        start(sandboxId: string, token?: string, metadata?: object, options?: RawAxiosRequestConfig): AxiosPromise<StartSandboxResponse> {
-            return localVarFp.start(sandboxId, token, metadata, options).then((request) => request(axios, basePath));
+        start(sandboxId: string, token?: string, sandbox?: StartSandboxDTO, options?: RawAxiosRequestConfig): AxiosPromise<StartSandboxResponse> {
+            return localVarFp.start(sandboxId, token, sandbox, options).then((request) => request(axios, basePath));
         },
         /**
          * Stop sandbox
@@ -966,12 +968,12 @@ export class SandboxApi extends BaseAPI {
      * @summary Start sandbox
      * @param {string} sandboxId Sandbox ID
      * @param {string} [token] Auth token
-     * @param {object} [metadata] Metadata
+     * @param {StartSandboxDTO} [sandbox] Start options
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public start(sandboxId: string, token?: string, metadata?: object, options?: RawAxiosRequestConfig) {
-        return SandboxApiFp(this.configuration).start(sandboxId, token, metadata, options).then((request) => request(this.axios, this.basePath));
+    public start(sandboxId: string, token?: string, sandbox?: StartSandboxDTO, options?: RawAxiosRequestConfig) {
+        return SandboxApiFp(this.configuration).start(sandboxId, token, sandbox, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

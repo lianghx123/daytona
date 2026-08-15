@@ -17,6 +17,12 @@ module Daytona
     # @return [String]
     attr_reader :state
 
+    # @return [DaytonaApiClient::VolumeBackendDto]
+    attr_reader :backend
+
+    # @return [String]
+    attr_reader :lifecycle
+
     # @return [String]
     attr_reader :created_at
 
@@ -37,6 +43,8 @@ module Daytona
       @name = volume_dto.name
       @organization_id = volume_dto.organization_id
       @state = volume_dto.state
+      @backend = volume_dto.backend
+      @lifecycle = volume_dto.lifecycle
       @created_at = volume_dto.created_at
       @updated_at = volume_dto.updated_at
       @last_used_at = volume_dto.last_used_at

@@ -17,6 +17,7 @@ import { JobStateHandlerService } from './job-state-handler.service'
 import { propagation, context as otelContext } from '@opentelemetry/api'
 import { PaginatedList } from '../../common/interfaces/paginated-list.interface'
 import { truncateErrorMessage } from '../../common/utils/truncate-error-message'
+import { VolumeMountSpecResolver } from './volume-mount-spec-resolver.service'
 
 const REDIS_BLOCKING_COMMAND_TIMEOUT_BUFFER_MS = 3_000
 
@@ -44,6 +45,7 @@ export class JobService {
     private readonly jobRepository: Repository<Job>,
     @InjectRedis() private readonly redis: Redis,
     private readonly jobStateHandlerService: JobStateHandlerService,
+    private readonly volumeMountSpecResolver: VolumeMountSpecResolver,
   ) {}
 
   /**
@@ -141,7 +143,7 @@ export class JobService {
         this.logger.warn(`Failed to clear Redis queue: ${error.message}`)
       }
 
-      return claimedJobs
+      return this.hydrateVolumeCredentials(claimedJobs)
     }
 
     // STEP 2: No existing jobs - wait for notification via Redis BRPOP
@@ -199,7 +201,7 @@ export class JobService {
 
         if (claimedJobs.length > 0) {
           this.logger.debug(`Claimed ${claimedJobs.length} jobs after Redis notification for runner ${runnerId}`)
-          return claimedJobs
+          return this.hydrateVolumeCredentials(claimedJobs)
         }
 
         // Notification received but no jobs found - possible race condition
@@ -230,7 +232,35 @@ export class JobService {
       this.logger.debug(`Claimed ${claimedJobs.length} pending jobs in fallback for runner ${runnerId}`)
     }
 
-    return claimedJobs
+    return this.hydrateVolumeCredentials(claimedJobs)
+  }
+
+  private async hydrateVolumeCredentials(jobs: JobDto[]): Promise<JobDto[]> {
+    return Promise.all(
+      jobs.map(async (job) => {
+        if (![JobType.CREATE_SANDBOX, JobType.START_SANDBOX, JobType.RECOVER_SANDBOX].includes(job.type)) {
+          return job
+        }
+
+        if (!job.payload) return job
+
+        let payload: { volumes?: Array<{ volumeId: string }> }
+        try {
+          payload = JSON.parse(job.payload) as { volumes?: Array<{ volumeId: string }> }
+        } catch (error) {
+          this.logger.error(`Unable to hydrate volume credentials for job ${job.id}: invalid JSON payload`)
+          throw error
+        }
+        const volumeIds = payload.volumes?.map((volume) => volume.volumeId) ?? []
+        const volumeMountCredentials = await this.volumeMountSpecResolver.hydrateCredentials(volumeIds)
+        if (!volumeMountCredentials) return job
+
+        return {
+          ...job,
+          payload: JSON.stringify({ ...payload, volumeMountCredentials }),
+        }
+      }),
+    )
   }
 
   async updateJobStatus(

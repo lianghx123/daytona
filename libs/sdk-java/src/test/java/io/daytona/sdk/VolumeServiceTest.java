@@ -6,6 +6,8 @@ package io.daytona.sdk;
 import io.daytona.api.client.api.VolumesApi;
 import io.daytona.api.client.model.VolumeDto;
 import io.daytona.api.client.model.VolumeState;
+import io.daytona.api.client.model.CreateVolumeBackendDto;
+import io.daytona.api.client.model.VolumeBackendType;
 import io.daytona.sdk.exception.DaytonaNotFoundException;
 import io.daytona.sdk.exception.DaytonaServerException;
 import io.daytona.sdk.model.Volume;
@@ -28,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class VolumeServiceTest {
@@ -62,6 +65,21 @@ class VolumeServiceTest {
         assertThat(volume.getId()).isNull();
         assertThat(volume.getName()).isNull();
         assertThat(volume.getState()).isNull();
+    }
+
+    @Test
+    void createPassesBackend() {
+        when(volumesApi.createVolume(any(), isNull())).thenReturn(volumeDto("vol-1", "juicefs", VolumeState.READY));
+        CreateVolumeBackendDto backend = new CreateVolumeBackendDto()
+                .type(VolumeBackendType.JUICEFS)
+                .metaUrl("redis://metadata:6379/1");
+
+        service.create("juicefs", backend);
+
+        ArgumentCaptor<io.daytona.api.client.model.CreateVolume> request =
+                ArgumentCaptor.forClass(io.daytona.api.client.model.CreateVolume.class);
+        verify(volumesApi).createVolume(request.capture(), isNull());
+        assertThat(request.getValue().getBackend()).isSameAs(backend);
     }
 
     @Test

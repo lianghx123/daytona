@@ -14,7 +14,14 @@ import { Badge, BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableFacetedFilter, FacetedFilterOption } from '@/components/ui/data-table-faceted-filter'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -63,6 +70,18 @@ type VolumeTableMeta = {
   onDelete: (volume: VolumeDto) => void
   processingVolumeAction: Record<string, boolean>
   deletePermitted: boolean
+  onViewDetails: (volume: VolumeDto) => void
+}
+
+type VolumeBackendDetails = {
+  type: 'managed_s3' | 'juicefs'
+  metaUrl?: string
+  cacheSizeMiB?: number
+}
+
+type VolumeWithBackend = VolumeDto & {
+  backend?: VolumeBackendDetails
+  lifecycle?: 'managed' | 'external'
 }
 
 declare module '@tanstack/react-table' {
@@ -106,12 +125,13 @@ export function VolumeTable({
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [detailsVolume, setDetailsVolume] = useState<VolumeDto | null>(null)
   const table = useReactTable({
     columnResizeMode: 'onEnd',
     data,
     columns,
     meta: {
-      volume: { onDelete, processingVolumeAction, deletePermitted },
+      volume: { onDelete, processingVolumeAction, deletePermitted, onViewDetails: setDetailsVolume },
     },
     defaultColumn: DEFAULT_TABLE_COLUMN,
     onColumnFiltersChange: setColumnFilters,
@@ -225,8 +245,8 @@ export function VolumeTable({
                 hasFilters ? null : (
                   <div className="space-y-2">
                     <p>
-                      Volumes are shared, persistent directories backed by S3-compatible storage, perfect for reusing
-                      datasets, caching dependencies, or passing files across sandboxes.
+                      Volumes are shared, persistent directories backed by managed S3 or an external JuiceFS filesystem,
+                      perfect for reusing datasets, caching dependencies, or passing files across sandboxes.
                     </p>
                     <p>
                       Create one via the SDK or CLI.{' '}
@@ -330,6 +350,7 @@ export function VolumeTable({
         onConfirm={handleBulkActionConfirm}
         onCancel={() => setPendingBulkAction(null)}
       />
+      <VolumeDetailsDialog volume={detailsVolume} onOpenChange={(open) => !open && setDetailsVolume(null)} />
     </div>
   )
 }
@@ -443,6 +464,16 @@ const columns: ColumnDef<VolumeDto>[] = [
     },
   },
   {
+    id: 'backend',
+    size: 120,
+    header: 'Backend',
+    accessorFn: (row) => (row as VolumeWithBackend).backend?.type ?? 'managed_s3',
+    cell: ({ row }) => {
+      const backend = (row.original as VolumeWithBackend).backend?.type ?? 'managed_s3'
+      return <Badge variant="secondary">{backend === 'juicefs' ? 'JuiceFS' : 'Managed S3'}</Badge>
+    },
+  },
+  {
     accessorKey: 'id',
     size: 180,
     maxSize: getTableColumnMaxResizeSize(180),
@@ -518,11 +549,7 @@ const columns: ColumnDef<VolumeDto>[] = [
     minSize: 48,
     maxSize: 48,
     cell: ({ row, table }) => {
-      const { deletePermitted, processingVolumeAction, onDelete } = getMeta(table)
-
-      if (!deletePermitted) {
-        return null
-      }
+      const { deletePermitted, processingVolumeAction, onDelete, onViewDetails } = getMeta(table)
 
       return (
         <div className="flex justify-end">
@@ -533,13 +560,18 @@ const columns: ColumnDef<VolumeDto>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={processingVolumeAction[row.original.id]}
-                onClick={() => onDelete(row.original)}
-              >
-                Delete
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => onViewDetails(row.original)}>View configuration</DropdownMenuItem>
+                {deletePermitted ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={processingVolumeAction[row.original.id]}
+                    onClick={() => onDelete(row.original)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -547,3 +579,39 @@ const columns: ColumnDef<VolumeDto>[] = [
     },
   },
 ]
+
+function VolumeDetailsDialog({
+  volume,
+  onOpenChange,
+}: {
+  volume: VolumeDto | null
+  onOpenChange: (open: boolean) => void
+}) {
+  const details = volume as VolumeWithBackend | null
+  const backend = details?.backend ?? { type: 'managed_s3' as const }
+
+  return (
+    <Dialog open={!!volume} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Volume configuration</DialogTitle>
+          <DialogDescription>Backend settings for {volume?.name}. Credentials are never displayed.</DialogDescription>
+        </DialogHeader>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
+          <dt className="text-muted-foreground">Backend</dt>
+          <dd>{backend.type === 'juicefs' ? 'JuiceFS' : 'Managed S3'}</dd>
+          <dt className="text-muted-foreground">Lifecycle</dt>
+          <dd>{details?.lifecycle ?? 'managed'}</dd>
+          {backend.type === 'juicefs' ? (
+            <>
+              <dt className="text-muted-foreground">Metadata URL</dt>
+              <dd className="break-all font-mono">{backend.metaUrl}</dd>
+              <dt className="text-muted-foreground">Runner cache</dt>
+              <dd>{backend.cacheSizeMiB ?? 10240} MiB</dd>
+            </>
+          ) : null}
+        </dl>
+      </DialogContent>
+    </Dialog>
+  )
+}

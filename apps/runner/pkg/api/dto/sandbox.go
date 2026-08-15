@@ -8,26 +8,27 @@ type CreateSandboxDTO struct {
 	// Name is the human-readable sandbox name. When present, it is used as the
 	// network alias for link networks so linked sandboxes can resolve each other
 	// by name.
-	Name             string            `json:"name,omitempty"`
-	FromVolumeId     string            `json:"fromVolumeId,omitempty"`
-	UserId           string            `json:"userId" validate:"required"`
-	Snapshot         string            `json:"snapshot" validate:"required"`
-	OsUser           string            `json:"osUser" validate:"required"`
-	CpuQuota         int64             `json:"cpuQuota" validate:"min=1"`
-	GpuQuota         int64             `json:"gpuQuota" validate:"min=0"`
-	MemoryQuota      int64             `json:"memoryQuota" validate:"min=1"`
-	StorageQuota     int64             `json:"storageQuota" validate:"min=1"`
-	Env              map[string]string `json:"env,omitempty"`
-	Registry         *RegistryDTO      `json:"registry,omitempty"`
-	Entrypoint       []string          `json:"entrypoint,omitempty"`
-	Volumes          []VolumeDTO       `json:"volumes,omitempty"`
-	NetworkBlockAll  *bool             `json:"networkBlockAll,omitempty"`
-	NetworkAllowList *string           `json:"networkAllowList,omitempty"`
-	DomainAllowList  *string           `json:"domainAllowList,omitempty"`
-	Metadata         map[string]string `json:"metadata,omitempty"`
-	AuthToken        *string           `json:"authToken,omitempty"`
-	OtelEndpoint     *string           `json:"otelEndpoint,omitempty"`
-	SkipStart        *bool             `json:"skipStart,omitempty"`
+	Name                   string                    `json:"name,omitempty"`
+	FromVolumeId           string                    `json:"fromVolumeId,omitempty"`
+	UserId                 string                    `json:"userId" validate:"required"`
+	Snapshot               string                    `json:"snapshot" validate:"required"`
+	OsUser                 string                    `json:"osUser" validate:"required"`
+	CpuQuota               int64                     `json:"cpuQuota" validate:"min=1"`
+	GpuQuota               int64                     `json:"gpuQuota" validate:"min=0"`
+	MemoryQuota            int64                     `json:"memoryQuota" validate:"min=1"`
+	StorageQuota           int64                     `json:"storageQuota" validate:"min=1"`
+	Env                    map[string]string         `json:"env,omitempty"`
+	Registry               *RegistryDTO              `json:"registry,omitempty"`
+	Entrypoint             []string                  `json:"entrypoint,omitempty"`
+	Volumes                []VolumeDTO               `json:"volumes,omitempty"`
+	VolumeMountCredentials VolumeMountCredentialsDTO `json:"volumeMountCredentials,omitempty"`
+	NetworkBlockAll        *bool                     `json:"networkBlockAll,omitempty"`
+	NetworkAllowList       *string                   `json:"networkAllowList,omitempty"`
+	DomainAllowList        *string                   `json:"domainAllowList,omitempty"`
+	Metadata               map[string]string         `json:"metadata,omitempty"`
+	AuthToken              *string                   `json:"authToken,omitempty"`
+	OtelEndpoint           *string                   `json:"otelEndpoint,omitempty"`
+	SkipStart              *bool                     `json:"skipStart,omitempty"`
 
 	// Optional for backward compatibility, but when provided, indicates the class of sandbox to create.
 	SandboxClass *string `json:"sandboxClass,omitempty"`
@@ -64,18 +65,19 @@ type UpdateNetworkSettingsDTO struct {
 } //	@name	UpdateNetworkSettingsDTO
 
 type RecoverSandboxDTO struct {
-	FromVolumeId     string            `json:"fromVolumeId,omitempty"`
-	UserId           string            `json:"userId" validate:"required"`
-	Snapshot         *string           `json:"snapshot,omitempty"`
-	OsUser           string            `json:"osUser" validate:"required"`
-	CpuQuota         int64             `json:"cpuQuota" validate:"min=1"`
-	GpuQuota         int64             `json:"gpuQuota" validate:"min=0"`
-	MemoryQuota      int64             `json:"memoryQuota" validate:"min=1"`
-	StorageQuota     int64             `json:"storageQuota" validate:"min=1"`
-	Env              map[string]string `json:"env,omitempty"`
-	Volumes          []VolumeDTO       `json:"volumes,omitempty"`
-	NetworkBlockAll  *bool             `json:"networkBlockAll,omitempty"`
-	NetworkAllowList *string           `json:"networkAllowList,omitempty"`
+	FromVolumeId           string                    `json:"fromVolumeId,omitempty"`
+	UserId                 string                    `json:"userId" validate:"required"`
+	Snapshot               *string                   `json:"snapshot,omitempty"`
+	OsUser                 string                    `json:"osUser" validate:"required"`
+	CpuQuota               int64                     `json:"cpuQuota" validate:"min=1"`
+	GpuQuota               int64                     `json:"gpuQuota" validate:"min=0"`
+	MemoryQuota            int64                     `json:"memoryQuota" validate:"min=1"`
+	StorageQuota           int64                     `json:"storageQuota" validate:"min=1"`
+	Env                    map[string]string         `json:"env,omitempty"`
+	Volumes                []VolumeDTO               `json:"volumes,omitempty"`
+	VolumeMountCredentials VolumeMountCredentialsDTO `json:"volumeMountCredentials,omitempty"`
+	NetworkBlockAll        *bool                     `json:"networkBlockAll,omitempty"`
+	NetworkAllowList       *string                   `json:"networkAllowList,omitempty"`
 	// At least one of ErrorReason or BackupErrorReason must yield a recovery type; both are optional.
 	ErrorReason       string       `json:"errorReason,omitempty"`
 	BackupErrorReason string       `json:"backupErrorReason,omitempty"`
@@ -92,6 +94,12 @@ type IsRecoverableResponse struct {
 type StartSandboxResponse struct {
 	DaemonVersion string `json:"daemonVersion"`
 } //	@name	StartSandboxResponse
+
+type StartSandboxDTO struct {
+	Metadata               map[string]string         `json:"metadata,omitempty"`
+	Volumes                []VolumeDTO               `json:"volumes,omitempty"`
+	VolumeMountCredentials VolumeMountCredentialsDTO `json:"volumeMountCredentials,omitempty"`
+} //	@name	StartSandboxDTO
 
 type StopSandboxDTO struct {
 	Force bool `json:"force,omitempty"`

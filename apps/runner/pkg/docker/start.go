@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -17,7 +18,14 @@ import (
 	"github.com/docker/docker/api/types/strslice"
 )
 
-func (d *DockerClient) Start(ctx context.Context, containerId string, authToken *string, metadata map[string]string) (*container.InspectResponse, string, error) {
+func (d *DockerClient) Start(
+	ctx context.Context,
+	containerId string,
+	authToken *string,
+	metadata map[string]string,
+	volumes []dto.VolumeDTO,
+	volumeMountCredentials dto.VolumeMountCredentialsDTO,
+) (*container.InspectResponse, string, error) {
 	defer timer.Timer()()
 
 	// Cancel a backup if it's already in progress
@@ -53,13 +61,15 @@ func (d *DockerClient) Start(ctx context.Context, containerId string, authToken 
 	}
 
 	// Re-establish FUSE mounts that may have died since the container was last running.
-	if volumesJSON, ok := metadata["volumes"]; ok {
-		var volumes []dto.VolumeDTO
-		if err := json.Unmarshal([]byte(volumesJSON), &volumes); err == nil && len(volumes) > 0 {
-			_, err = d.getVolumesMountPathBinds(ctx, volumes)
-			if err != nil {
-				d.logger.ErrorContext(ctx, "Failed to ensure volume FUSE mounts", "error", err)
-			}
+	if len(volumes) == 0 {
+		if volumesJSON, ok := metadata["volumes"]; ok {
+			_ = json.Unmarshal([]byte(volumesJSON), &volumes)
+		}
+	}
+	if len(volumes) > 0 {
+		_, err = d.getVolumesMountPathBinds(ctx, volumes, volumeMountCredentials)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to ensure volume FUSE mounts: %w", err)
 		}
 	}
 

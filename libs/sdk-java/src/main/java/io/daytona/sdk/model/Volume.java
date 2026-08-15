@@ -5,6 +5,7 @@ package io.daytona.sdk.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.daytona.api.client.model.VolumeBackendDto;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 /**
@@ -17,6 +18,10 @@ public class Volume {
     private String name;
     @JsonProperty("state")
     private String state;
+    @JsonProperty("backend")
+    private VolumeBackendDto backend;
+    @JsonProperty("lifecycle")
+    private String lifecycle;
 
     /**
      * Returns volume identifier.
@@ -59,4 +64,12 @@ public class Volume {
      * @param state lifecycle state
      */
     public void setState(String state) { this.state = state; }
+
+    public VolumeBackendDto getBackend() { return backend; }
+
+    public void setBackend(VolumeBackendDto backend) { this.backend = backend; }
+
+    public String getLifecycle() { return lifecycle; }
+
+    public void setLifecycle(String lifecycle) { this.lifecycle = lifecycle; }
 }

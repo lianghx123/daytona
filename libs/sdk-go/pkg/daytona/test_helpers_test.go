@@ -73,6 +73,8 @@ func testVolumePayload(id, name string, state apiclient.VolumeState) map[string]
 		"name":           name,
 		"organizationId": "org-1",
 		"state":          state,
+		"backend":        map[string]any{"type": "managed_s3"},
+		"lifecycle":      "managed",
 		"createdAt":      now,
 		"updatedAt":      now,
 		"errorReason":    nil,

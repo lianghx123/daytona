@@ -15,6 +15,12 @@
 
 // May contain unused imports in some cases
 // @ts-ignore
+import type { VolumeBackendDto } from './volume-backend-dto';
+// May contain unused imports in some cases
+// @ts-ignore
+import type { VolumeLifecycle } from './volume-lifecycle';
+// May contain unused imports in some cases
+// @ts-ignore
 import type { VolumeState } from './volume-state';
 
 export interface VolumeDto {
@@ -34,6 +40,8 @@ export interface VolumeDto {
      * Volume state
      */
     'state': VolumeState;
+    'backend': VolumeBackendDto;
+    'lifecycle': VolumeLifecycle;
     /**
      * Creation timestamp
      */

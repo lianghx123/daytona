@@ -65,8 +65,19 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 FROM docker:28.5.2-dind-alpine3.22 AS runner
 
+ARG TARGETARCH
+ARG JUICEFS_VERSION=1.4.1
+
 RUN apk update && apk upgrade --no-cache openssl pcre2 \
-  && apk add --no-cache curl rsync
+  && apk add --no-cache curl rsync fuse3 util-linux \
+  && JUICEFS_SHA256=$([ "$TARGETARCH" = "arm64" ] \
+      && echo "1015ade83a7a93180a29f6c93ee5780a3eda52522331934ef2ef0cc0921995fd" \
+      || echo "01ee09a21a9351a465e09906f113845e1c6a19bea70f530e5e2b2125b2dd3b82") \
+  && wget -q "https://github.com/juicedata/juicefs/releases/download/v${JUICEFS_VERSION}/juicefs-${JUICEFS_VERSION}-linux-${TARGETARCH}.tar.gz" -O /tmp/juicefs.tar.gz \
+  && echo "${JUICEFS_SHA256}  /tmp/juicefs.tar.gz" | sha256sum -c - \
+  && tar -xzf /tmp/juicefs.tar.gz -C /usr/local/bin juicefs \
+  && chmod +x /usr/local/bin/juicefs \
+  && rm /tmp/juicefs.tar.gz
 
 WORKDIR /usr/local/bin
 

@@ -13,8 +13,12 @@
  */
 
 
+// May contain unused imports in some cases
+// @ts-ignore
+import type { DtoVolumeBackendDTO } from './dto-volume-backend-dto';
 
 export interface DtoVolumeDTO {
+    'backend'?: DtoVolumeBackendDTO;
     'mountPath'?: string;
     'subpath'?: string;
     'volumeId'?: string;

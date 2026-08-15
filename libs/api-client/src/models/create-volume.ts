@@ -13,8 +13,15 @@
  */
 
 
+// May contain unused imports in some cases
+// @ts-ignore
+import type { CreateVolumeBackendDto } from './create-volume-backend-dto';
 
 export interface CreateVolume {
     'name': string;
+    /**
+     * Storage backend. Omit to create a Daytona-managed S3 volume.
+     */
+    'backend'?: CreateVolumeBackendDto;
 }
 

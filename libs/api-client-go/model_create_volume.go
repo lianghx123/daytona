@@ -22,6 +22,8 @@ var _ MappedNullable = &CreateVolume{}
 // CreateVolume struct for CreateVolume
 type CreateVolume struct {
 	Name string `json:"name"`
+	// Storage backend. Omit to create a Daytona-managed S3 volume.
+	Backend *CreateVolumeBackendDto `json:"backend,omitempty"`
 	AdditionalProperties map[string]interface{}
 }
 
@@ -69,6 +71,38 @@ func (o *CreateVolume) SetName(v string) {
 	o.Name = v
 }
 
+// GetBackend returns the Backend field value if set, zero value otherwise.
+func (o *CreateVolume) GetBackend() CreateVolumeBackendDto {
+	if o == nil || IsNil(o.Backend) {
+		var ret CreateVolumeBackendDto
+		return ret
+	}
+	return *o.Backend
+}
+
+// GetBackendOk returns a tuple with the Backend field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *CreateVolume) GetBackendOk() (*CreateVolumeBackendDto, bool) {
+	if o == nil || IsNil(o.Backend) {
+		return nil, false
+	}
+	return o.Backend, true
+}
+
+// HasBackend returns a boolean if a field has been set.
+func (o *CreateVolume) HasBackend() bool {
+	if o != nil && !IsNil(o.Backend) {
+		return true
+	}
+
+	return false
+}
+
+// SetBackend gets a reference to the given CreateVolumeBackendDto and assigns it to the Backend field.
+func (o *CreateVolume) SetBackend(v CreateVolumeBackendDto) {
+	o.Backend = &v
+}
+
 func (o CreateVolume) MarshalJSON() ([]byte, error) {
 	toSerialize,err := o.ToMap()
 	if err != nil {
@@ -80,6 +114,9 @@ func (o CreateVolume) MarshalJSON() ([]byte, error) {
 func (o CreateVolume) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
 	toSerialize["name"] = o.Name
+	if !IsNil(o.Backend) {
+		toSerialize["backend"] = o.Backend
+	}
 
 	for key, value := range o.AdditionalProperties {
 		toSerialize[key] = value
@@ -124,6 +161,7 @@ func (o *CreateVolume) UnmarshalJSON(data []byte) (err error) {
 
 	if err = json.Unmarshal(data, &additionalProperties); err == nil {
 		delete(additionalProperties, "name")
+		delete(additionalProperties, "backend")
 		o.AdditionalProperties = additionalProperties
 	}
 

@@ -6,7 +6,7 @@ description: Shared file access across sandboxes.
 import { TabItem, Tabs } from '@astrojs/starlight/components'
 import Label from '@components/Label.astro'
 
-Volumes are FUSE-based mounts that provide shared file access across Daytona sandboxes. They enable sandboxes to read from large files instantly - no need to upload files manually to each sandbox. Volume data is stored in an S3-compatible object store.
+Volumes are FUSE-based mounts that provide shared file access across Daytona sandboxes. They enable sandboxes to read from large files instantly - no need to upload files manually to each sandbox. By default, Daytona manages the volume in its configured S3-compatible object store. You can also register an externally managed, pre-formatted JuiceFS filesystem.
 
 A sandbox reads and writes a mounted volume like any local directory, and the contents persist independently of the sandbox lifecycle. Use volumes to share datasets, model weights, build caches, or application state between sandboxes, scope per-user or per-tenant data with a `subpath`, and combine multiple volumes in the same sandbox at different mount paths.
 
@@ -43,10 +43,10 @@ volume = daytona.volume.create("my-awesome-volume")
 <TabItem label="TypeScript" icon="seti:typescript">
 
 ```typescript
-import { Daytona } from "@daytona/sdk";
+import { Daytona } from '@daytona/sdk'
 
-const daytona = new Daytona();
-const volume = await daytona.volume.create("my-awesome-volume");
+const daytona = new Daytona()
+const volume = await daytona.volume.create('my-awesome-volume')
 ```
 
 </TabItem>
@@ -124,6 +124,37 @@ curl 'https://app.daytona.io/api/volumes' \
 
 </TabItem>
 </Tabs>
+
+### Use an external JuiceFS filesystem
+
+Format and operate the JuiceFS filesystem outside Daytona, then register its metadata URL when creating the volume. Daytona validates the configuration and manages access and mounting, but it does not format or destroy the JuiceFS filesystem. Deleting the Daytona volume removes only the Daytona reference, so the external data remains available.
+
+`metaUrl` must be an absolute URL with a scheme. Do not embed a password in the URL; pass it through `credential.metaPassword`. The password is encrypted by the Daytona API and is never returned by volume or job APIs. `cacheSizeMiB` defaults to `10240` and controls the disposable local Runner cache.
+
+```typescript
+const volume = await daytona.volume.create('shared-juicefs', {
+  type: 'juicefs',
+  metaUrl: 'redis://metadata.internal:6379/1',
+  cacheSizeMiB: 20480,
+  credential: { metaPassword: process.env.JUICEFS_META_PASSWORD },
+})
+```
+
+```python
+from daytona_api_client import CreateVolumeBackendDto, JuiceFSVolumeCredentialDto, VolumeBackendType
+
+volume = daytona.volume.create(
+    "shared-juicefs",
+    CreateVolumeBackendDto(
+        type=VolumeBackendType.JUICEFS,
+        meta_url="redis://metadata.internal:6379/1",
+        cache_size_mi_b=20480,
+        credential=JuiceFSVolumeCredentialDto(meta_password="secret"),
+    ),
+)
+```
+
+The backend configuration is immutable. To change it, delete the Daytona volume reference and create a new one. Daytona currently supports `managed_s3` and `juicefs`; external S3 backends are not supported.
 
 ## Mount volumes
 
@@ -661,7 +692,10 @@ const producer = await daytona.create({
   language: 'typescript',
   volumes: [{ volumeId: volume.id, mountPath: mountDir }],
 })
-await producer.fs.uploadFile(Buffer.from('shared payload'), `${mountDir}/payload.bin`)
+await producer.fs.uploadFile(
+  Buffer.from('shared payload'),
+  `${mountDir}/payload.bin`
+)
 await daytona.delete(producer)
 
 // Consumer: a separate sandbox mounts the same volume by ID and reads the data
@@ -986,16 +1020,24 @@ const mountDir = '/home/daytona/data'
 // Tenant A
 const aliceSandbox = await daytona.create({
   language: 'typescript',
-  volumes: [{ volumeId: volume.id, mountPath: mountDir, subpath: 'users/alice' }],
+  volumes: [
+    { volumeId: volume.id, mountPath: mountDir, subpath: 'users/alice' },
+  ],
 })
-await aliceSandbox.fs.uploadFile(Buffer.from("alice's data"), `${mountDir}/notes.txt`)
+await aliceSandbox.fs.uploadFile(
+  Buffer.from("alice's data"),
+  `${mountDir}/notes.txt`
+)
 
 // Tenant B sees only its own subpath; alice's notes.txt is invisible
 const bobSandbox = await daytona.create({
   language: 'typescript',
   volumes: [{ volumeId: volume.id, mountPath: mountDir, subpath: 'users/bob' }],
 })
-await bobSandbox.fs.uploadFile(Buffer.from("bob's data"), `${mountDir}/notes.txt`)
+await bobSandbox.fs.uploadFile(
+  Buffer.from("bob's data"),
+  `${mountDir}/notes.txt`
+)
 ```
 
 </TabItem>
@@ -1123,4 +1165,3 @@ Since volumes are FUSE-based mounts, they can not be used for applications that 
 Daytona volumes are included at no additional cost. Each organization can create up to 100 volumes, and volume data does not count against your storage quota.
 
 You can view your current volume usage in the [Daytona Volumes ↗](https://app.daytona.io/dashboard/volumes).
-

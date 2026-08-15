@@ -19,8 +19,11 @@ module Daytona
     # Create new Volume.
     #
     # @param name [String]
+    # @param backend [DaytonaApiClient::CreateVolumeBackendDto, nil]
     # @return [Daytona::Volume]
-    def create(name) = Volume.new(volumes_api.create_volume(DaytonaApiClient::CreateVolume.new(name:)))
+    def create(name, backend = nil)
+      Volume.new(volumes_api.create_volume(DaytonaApiClient::CreateVolume.new(name:, backend:)))
+    end
 
     # Delete a Volume.
     #

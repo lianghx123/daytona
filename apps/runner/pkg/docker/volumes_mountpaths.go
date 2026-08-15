@@ -40,26 +40,34 @@ func getVolumeMountBasePath() string {
 	return "/mnt"
 }
 
-func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []dto.VolumeDTO) ([]string, error) {
+func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []dto.VolumeDTO, credentials dto.VolumeMountCredentialsDTO) ([]string, error) {
 	// Phase 1: fan out FUSE mounts for unique volumes in parallel. Each
 	// ensureVolumeFuseMounted runs mount-s3 and then waits up to 5s for the
 	// mount to become ready; doing them sequentially made create-time scale
 	// linearly with the number of mounted volumes.
-	uniqueMounts := make(map[string]string, len(volumes)) // volumeIdPrefixed -> baseMountPath
+	type uniqueVolumeMount struct {
+		volume    dto.VolumeDTO
+		mountPath string
+	}
+	uniqueMounts := make(map[string]uniqueVolumeMount, len(volumes))
 	mountBase := filepath.Clean(getVolumeMountBasePath())
 	for _, vol := range volumes {
 		if !isValidVolumeId(vol.VolumeId) {
 			return nil, fmt.Errorf("invalid volumeId %q: must be a volume UUID", vol.VolumeId)
 		}
 		volumeIdPrefixed := fmt.Sprintf("%s%s", volumeMountPrefix, vol.VolumeId)
-		if _, ok := uniqueMounts[volumeIdPrefixed]; !ok {
+		if existing, ok := uniqueMounts[volumeIdPrefixed]; ok {
+			if existing.volume.BackendType() != vol.BackendType() {
+				return nil, fmt.Errorf("volume %s has conflicting backend specifications", vol.VolumeId)
+			}
+		} else {
 			baseMountPath := filepath.Join(getVolumeMountBasePath(), volumeIdPrefixed)
 			// Defense in depth: the path must stay a direct child of mountBase so a
 			// traversal string can never escape it or collide with another volume.
 			if filepath.Dir(baseMountPath) != mountBase || filepath.Base(baseMountPath) != volumeIdPrefixed {
 				return nil, fmt.Errorf("invalid volumeId %q: resolves outside volume mount base", vol.VolumeId)
 			}
-			uniqueMounts[volumeIdPrefixed] = baseMountPath
+			uniqueMounts[volumeIdPrefixed] = uniqueVolumeMount{volume: vol, mountPath: baseMountPath}
 		}
 	}
 
@@ -71,11 +79,16 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 		errMu    sync.Mutex
 		firstErr error
 	)
-	for volumeIdPrefixed, baseMountPath := range uniqueMounts {
+	for _, uniqueMount := range uniqueMounts {
 		wg.Add(1)
-		go func(volumeId, mountPath string) {
+		go func(mount uniqueVolumeMount) {
 			defer wg.Done()
-			if err := d.ensureVolumeFuseMounted(mountCtx, volumeId, mountPath); err != nil {
+			credential, hasCredential := credentials[mount.volume.VolumeId]
+			var credentialPtr *dto.VolumeMountCredentialDTO
+			if hasCredential {
+				credentialPtr = &credential
+			}
+			if err := d.ensureVolumeFuseMounted(mountCtx, mount.volume, credentialPtr, mount.mountPath); err != nil {
 				errMu.Lock()
 				if firstErr == nil {
 					firstErr = err
@@ -83,7 +96,7 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 				}
 				errMu.Unlock()
 			}
-		}(volumeIdPrefixed, baseMountPath)
+		}(uniqueMount)
 	}
 	wg.Wait()
 	if firstErr != nil {
@@ -95,7 +108,7 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 	volumeMountPathBinds := make([]string, 0, len(volumes))
 	for _, vol := range volumes {
 		volumeIdPrefixed := fmt.Sprintf("%s%s", volumeMountPrefix, vol.VolumeId)
-		baseMountPath := uniqueMounts[volumeIdPrefixed]
+		baseMountPath := uniqueMounts[volumeIdPrefixed].mountPath
 
 		subpathStr := ""
 		if vol.Subpath != nil {
@@ -106,7 +119,8 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 		if vol.Subpath != nil && *vol.Subpath != "" {
 			bindSource = filepath.Join(baseMountPath, *vol.Subpath)
 			// Ensure the resolved path stays within baseMountPath to prevent path traversal
-			if !strings.HasPrefix(filepath.Clean(bindSource), filepath.Clean(baseMountPath)) {
+			relativePath, relErr := filepath.Rel(baseMountPath, bindSource)
+			if relErr != nil || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
 				return nil, fmt.Errorf("invalid subpath %q: resolves outside volume mount", *vol.Subpath)
 			}
 			err := os.MkdirAll(bindSource, 0755)
@@ -122,7 +136,8 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 	return volumeMountPathBinds, nil
 }
 
-func (d *DockerClient) ensureVolumeFuseMounted(ctx context.Context, volumeId string, mountPath string) error {
+func (d *DockerClient) ensureVolumeFuseMounted(ctx context.Context, volume dto.VolumeDTO, credential *dto.VolumeMountCredentialDTO, mountPath string) error {
+	volumeId := fmt.Sprintf("%s%s", volumeMountPrefix, volume.VolumeId)
 	d.volumeMutexesMutex.Lock()
 	volumeMutex, exists := d.volumeMutexes[volumeId]
 	if !exists {
@@ -148,37 +163,52 @@ func (d *DockerClient) ensureVolumeFuseMounted(ctx context.Context, volumeId str
 		return fmt.Errorf("failed to create mount directory %s: %s", mountPath, err)
 	}
 
-	d.logger.InfoContext(ctx, "mounting S3 volume", "volumeId", volumeId, "mountPath", mountPath)
+	d.logger.InfoContext(ctx, "mounting volume", "volumeId", volumeId, "backend", volume.BackendType(), "mountPath", mountPath)
 
-	cmd := d.getMountCmd(ctx, volumeId, mountPath)
+	mounter, err := newVolumeMounterRegistry(d).Get(volume.BackendType())
+	if err != nil {
+		return err
+	}
+	cmd, err := mounter.MountCommand(ctx, volume, credential, mountPath)
+	if err != nil {
+		return err
+	}
 	err = cmd.Run()
 	if err != nil {
-		if !dirExisted {
-			removeErr := os.Remove(mountPath)
-			if removeErr != nil {
-				d.logger.WarnContext(ctx, "failed to remove mount directory", "path", mountPath, "error", removeErr)
-			}
-		}
-		return fmt.Errorf("failed to mount S3 volume %s to %s: %s", volumeId, mountPath, err)
+		d.cleanupFailedVolumeMount(ctx, volume, mountPath, dirExisted, true)
+		return fmt.Errorf("failed to mount %s volume %s to %s: %s", volume.BackendType(), volumeId, mountPath, err)
 	}
 
 	err = d.waitForMountReady(ctx, mountPath)
 	if err != nil {
-		if !dirExisted {
-			umountErr := exec.Command("umount", mountPath).Run()
-			if umountErr != nil {
-				d.logger.WarnContext(ctx, "failed to unmount during cleanup", "path", mountPath, "error", umountErr)
-			}
-			removeErr := os.Remove(mountPath)
-			if removeErr != nil {
-				d.logger.WarnContext(ctx, "failed to remove mount directory during cleanup", "path", mountPath, "error", removeErr)
-			}
-		}
+		d.cleanupFailedVolumeMount(ctx, volume, mountPath, dirExisted, true)
 		return fmt.Errorf("mount %s not ready after mounting: %s", mountPath, err)
 	}
 
-	d.logger.InfoContext(ctx, "mounted S3 volume", "volumeId", volumeId, "mountPath", mountPath)
+	d.logger.InfoContext(ctx, "mounted volume", "volumeId", volumeId, "backend", volume.BackendType(), "mountPath", mountPath)
 	return nil
+}
+
+func (d *DockerClient) cleanupFailedVolumeMount(ctx context.Context, volume dto.VolumeDTO, mountPath string, dirExisted bool, tryUnmount bool) {
+	if tryUnmount && d.isDirectoryMounted(mountPath) {
+		if err := exec.Command("umount", mountPath).Run(); err != nil {
+			d.logger.WarnContext(ctx, "failed to unmount during cleanup", "path", mountPath, "error", err)
+		}
+	}
+	if d.isDirectoryMounted(mountPath) {
+		return
+	}
+	if !dirExisted {
+		if err := os.Remove(mountPath); err != nil && !os.IsNotExist(err) {
+			d.logger.WarnContext(ctx, "failed to remove mount directory during cleanup", "path", mountPath, "error", err)
+		}
+	}
+	if volume.BackendType() == dto.VolumeBackendJuiceFS {
+		cachePath := filepath.Join("/var/lib/daytona/juicefs-cache", volume.VolumeId)
+		if err := os.RemoveAll(cachePath); err != nil {
+			d.logger.WarnContext(ctx, "failed to remove JuiceFS cache during cleanup", "path", cachePath, "error", err)
+		}
+	}
 }
 
 func (d *DockerClient) isDirectoryMounted(path string) bool {
@@ -225,7 +255,7 @@ func (d *DockerClient) waitForMountReady(ctx context.Context, path string) error
 	return fmt.Errorf("mount did not become ready within timeout")
 }
 
-func (d *DockerClient) getMountCmd(ctx context.Context, volume string, path string) *exec.Cmd {
+func (d *DockerClient) getS3MountCmd(ctx context.Context, volume string, path string) *exec.Cmd {
 	args := []string{"--allow-other", "--allow-delete", "--allow-overwrite", "--file-mode", "0666", "--dir-mode", "0777"}
 	args = append(args, volume, path)
 
@@ -247,7 +277,7 @@ func (d *DockerClient) getMountCmd(ctx context.Context, volume string, path stri
 	// CommandContext is used so ctx cancellation can stop a slow mount-s3 startup;
 	// once mount-s3 daemonizes (no --foreground), cmd.Run returns and ctx no longer has a leash.
 	cmd := exec.CommandContext(ctx, "mount-s3", args...)
-	cmd.Env = envVars
+	cmd.Env = append(os.Environ(), envVars...)
 
 	_, err := os.Stat("/run/systemd/system")
 	if err == nil {
@@ -264,5 +294,26 @@ func (d *DockerClient) getMountCmd(ctx context.Context, volume string, path stri
 	cmd.Stderr = io.Writer(&log.ErrorLogWriter{})
 	cmd.Stdout = io.Writer(&log.InfoLogWriter{})
 
+	return cmd
+}
+
+func (d *DockerClient) getJuiceFSMountCmd(ctx context.Context, volume dto.VolumeDTO, credential *dto.VolumeMountCredentialDTO, path string) *exec.Cmd {
+	config := volume.Backend.JuiceFS
+	cacheDir := filepath.Join("/var/lib/daytona/juicefs-cache", volume.VolumeId)
+	args := []string{
+		"mount",
+		"-d",
+		"--cache-dir", cacheDir,
+		"--cache-size", fmt.Sprintf("%d", config.CacheSizeMiB),
+		config.MetaURL,
+		path,
+	}
+	cmd := exec.CommandContext(ctx, "juicefs", args...)
+	cmd.Env = os.Environ()
+	if credential != nil && credential.JuiceFS != nil && credential.JuiceFS.MetaPassword != "" {
+		cmd.Env = append(cmd.Env, "META_PASSWORD="+credential.JuiceFS.MetaPassword)
+	}
+	cmd.Stderr = io.Writer(&log.ErrorLogWriter{})
+	cmd.Stdout = io.Writer(&log.InfoLogWriter{})
 	return cmd
 }

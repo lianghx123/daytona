@@ -18,6 +18,7 @@ import {
   SnapshotDigestResponse,
 } from './runnerAdapter'
 import { SnapshotStateError } from '../errors/snapshot-state-error'
+import { VolumeMountSpecResolver } from '../services/volume-mount-spec-resolver.service'
 import { Runner } from '../entities/runner.entity'
 import {
   Configuration,
@@ -33,6 +34,7 @@ import {
   ToolboxApi,
   UpdateNetworkSettingsDTO,
   RecoverSandboxDTO,
+  StartSandboxDTO,
 } from '@daytona/runner-api-client'
 import { Sandbox } from '../entities/sandbox.entity'
 import { BuildInfo } from '../entities/build-info.entity'
@@ -53,6 +55,8 @@ export class RunnerAdapterV0 implements RunnerAdapter {
   private snapshotApiClient: SnapshotsApi
   private runnerApiClient: DefaultApi
   private toolboxApiClient: ToolboxApi
+
+  constructor(private readonly volumeMountSpecResolver: VolumeMountSpecResolver) {}
 
   private convertSandboxState(state: EnumsSandboxState): SandboxState {
     switch (state) {
@@ -196,7 +200,8 @@ export class RunnerAdapterV0 implements RunnerAdapter {
     otelEndpoint?: string,
     skipStart?: boolean,
   ): Promise<StartSandboxResponse | undefined> {
-    const createSandboxDto: CreateSandboxDTO = {
+    const volumeMountSpec = await this.volumeMountSpecResolver.resolve(sandbox.organizationId, sandbox.volumes)
+    const createSandboxDto = {
       id: sandbox.id,
       name: sandbox.name,
       userId: sandbox.organizationId,
@@ -216,11 +221,8 @@ export class RunnerAdapterV0 implements RunnerAdapter {
           }
         : undefined,
       entrypoint: entrypoint,
-      volumes: sandbox.volumes?.map((volume) => ({
-        volumeId: volume.volumeId,
-        mountPath: volume.mountPath,
-        subpath: volume.subpath,
-      })),
+      volumes: volumeMountSpec.volumes,
+      volumeMountCredentials: volumeMountSpec.volumeMountCredentials,
       networkBlockAll: sandbox.networkBlockAll,
       networkAllowList: sandbox.networkAllowList,
       domainAllowList: sandbox.domainAllowList,
@@ -232,7 +234,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
       regionId: sandbox.region,
       linkedSandboxId: sandbox.linkedSandboxId ?? undefined,
       sandboxClass: sandbox.sandboxClass,
-    }
+    } as CreateSandboxDTO
 
     const response = await this.sandboxApiClient.create(createSandboxDto)
 
@@ -246,11 +248,16 @@ export class RunnerAdapterV0 implements RunnerAdapter {
   }
 
   async startSandbox(
-    sandboxId: string,
-    authToken: string,
+    sandbox: Sandbox,
     metadata?: { [key: string]: string },
   ): Promise<StartSandboxResponse | undefined> {
-    const response = await this.sandboxApiClient.start(sandboxId, authToken, metadata)
+    const volumeMountSpec = await this.volumeMountSpecResolver.resolve(sandbox.organizationId, sandbox.volumes)
+    const startSandboxDto: StartSandboxDTO = {
+      metadata,
+      volumes: volumeMountSpec.volumes,
+      volumeMountCredentials: volumeMountSpec.volumeMountCredentials,
+    }
+    const response = await this.sandboxApiClient.start(sandbox.id, sandbox.authToken, startSandboxDto)
 
     if (!response?.data?.daemonVersion) {
       return undefined
@@ -470,7 +477,8 @@ export class RunnerAdapterV0 implements RunnerAdapter {
 
   // skipStart is a v2-only signal (carried in the job payload); v0's sync API has no equivalent.
   async recoverSandbox(sandbox: Sandbox, registry?: DockerRegistry, _skipStart?: boolean): Promise<void> {
-    const recoverSandboxDTO: RecoverSandboxDTO = {
+    const volumeMountSpec = await this.volumeMountSpecResolver.resolve(sandbox.organizationId, sandbox.volumes)
+    const recoverSandboxDTO = {
       userId: sandbox.organizationId,
       snapshot: sandbox.snapshot,
       osUser: sandbox.osUser,
@@ -479,11 +487,8 @@ export class RunnerAdapterV0 implements RunnerAdapter {
       memoryQuota: sandbox.mem,
       storageQuota: sandbox.disk,
       env: sandbox.env,
-      volumes: sandbox.volumes?.map((volume) => ({
-        volumeId: volume.volumeId,
-        mountPath: volume.mountPath,
-        subpath: volume.subpath,
-      })),
+      volumes: volumeMountSpec.volumes,
+      volumeMountCredentials: volumeMountSpec.volumeMountCredentials,
       networkBlockAll: sandbox.networkBlockAll,
       networkAllowList: sandbox.networkAllowList,
       errorReason: sandbox.errorReason,
@@ -496,7 +501,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
             password: registry.password,
           }
         : undefined,
-    }
+    } as RecoverSandboxDTO
     await this.sandboxApiClient.recover(sandbox.id, recoverSandboxDTO)
   }
 

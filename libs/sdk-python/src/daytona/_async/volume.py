@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from daytona_api_client_async import CreateVolume, VolumesApi
+from daytona_api_client_async import CreateVolume, CreateVolumeBackendDto, VolumesApi
 from daytona_api_client_async.exceptions import NotFoundException
 
 from .._utils.otel_decorator import with_instrumentation
@@ -58,11 +58,12 @@ class AsyncVolumeService:
             raise e
 
     @with_instrumentation()
-    async def create(self, name: str) -> Volume:
+    async def create(self, name: str, backend: CreateVolumeBackendDto | None = None) -> Volume:
         """Create a new Volume.
 
         Args:
             name (str): Name of the Volume to create.
+            backend (CreateVolumeBackendDto | None): Optional storage backend configuration.
 
         Returns:
             Volume: The Volume object.
@@ -74,7 +75,7 @@ class AsyncVolumeService:
                 print(f"{volume.name} ({volume.id}); state: {volume.state}")
             ```
         """
-        return Volume.from_dto(await self.__volumes_api.create_volume(CreateVolume(name=name)))
+        return Volume.from_dto(await self.__volumes_api.create_volume(CreateVolume(name=name, backend=backend)))
 
     @with_instrumentation()
     async def delete(self, volume: Volume) -> None:

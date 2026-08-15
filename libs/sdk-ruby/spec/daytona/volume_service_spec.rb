@@ -20,6 +20,22 @@ RSpec.describe Daytona::VolumeService do
         expect(request.name).to eq('my-volume')
       end
     end
+
+    it 'passes an optional JuiceFS backend' do
+      dto = build_volume_dto(name: 'juicefs-volume')
+      backend = DaytonaApiClient::CreateVolumeBackendDto.new(
+        type: DaytonaApiClient::VolumeBackendType::JUICEFS,
+        meta_url: 'redis://metadata:6379/1',
+        cache_size_mi_b: 2048
+      )
+      allow(volumes_api).to receive(:create_volume).and_return(dto)
+
+      service.create('juicefs-volume', backend)
+
+      expect(volumes_api).to have_received(:create_volume) do |request|
+        expect(request.backend).to equal(backend)
+      end
+    end
   end
 
   describe '#delete' do

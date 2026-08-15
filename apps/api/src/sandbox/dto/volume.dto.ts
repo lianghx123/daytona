@@ -7,6 +7,19 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsEnum } from 'class-validator'
 import { VolumeState } from '../enums/volume-state.enum'
 import { Volume } from '../entities/volume.entity'
+import { VolumeBackendType } from '../enums/volume-backend-type.enum'
+import { VolumeLifecycle } from '../enums/volume-lifecycle.enum'
+
+export class VolumeBackendDto {
+  @ApiProperty({ enum: VolumeBackendType, enumName: 'VolumeBackendType' })
+  type: VolumeBackendType
+
+  @ApiPropertyOptional({ example: 'redis://juicefs-meta:6379/12' })
+  metaUrl?: string
+
+  @ApiPropertyOptional({ example: 10240 })
+  cacheSizeMiB?: number
+}
 
 export class VolumeDto {
   @ApiProperty({
@@ -35,6 +48,12 @@ export class VolumeDto {
   })
   @IsEnum(VolumeState)
   state: VolumeState
+
+  @ApiProperty({ type: VolumeBackendDto })
+  backend: VolumeBackendDto
+
+  @ApiProperty({ enum: VolumeLifecycle, enumName: 'VolumeLifecycle' })
+  lifecycle: VolumeLifecycle
 
   @ApiProperty({
     description: 'Creation timestamp',
@@ -68,6 +87,15 @@ export class VolumeDto {
       name: volume.name,
       organizationId: volume.organizationId,
       state: volume.state,
+      backend:
+        volume.backendType === VolumeBackendType.JUICEFS
+          ? {
+              type: volume.backendType,
+              metaUrl: 'metaUrl' in volume.backendConfig ? volume.backendConfig.metaUrl : undefined,
+              cacheSizeMiB: 'cacheSizeMiB' in volume.backendConfig ? volume.backendConfig.cacheSizeMiB : undefined,
+            }
+          : { type: VolumeBackendType.MANAGED_S3 },
+      lifecycle: volume.lifecycle,
       createdAt: volume.createdAt?.toISOString(),
       updatedAt: volume.updatedAt?.toISOString(),
       lastUsedAt: volume.lastUsedAt?.toISOString(),

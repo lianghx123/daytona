@@ -323,7 +323,7 @@ func GetNetworkSettings(ctx *gin.Context) {
 //	@Description	Start sandbox
 //	@Produce		json
 //	@Param			sandboxId	path		string						true	"Sandbox ID"
-//	@Param			metadata	body		object						false	"Metadata"
+//	@Param			sandbox		body		dto.StartSandboxDTO			false	"Start options"
 //	@Param			token		query		string						false	"Auth token"
 //	@Success		200			{object}	dto.StartSandboxResponse	"Sandbox started"
 //	@Failure		400			{object}	common_errors.ErrorResponse
@@ -343,8 +343,8 @@ func Start(ctx *gin.Context) {
 		return
 	}
 
-	var metadata map[string]string
-	err = ctx.ShouldBindJSON(&metadata)
+	var startDto dto.StartSandboxDTO
+	err = ctx.ShouldBindJSON(&startDto)
 	if err != nil {
 		ctx.Error(common_errors.NewInvalidBodyRequestError(err))
 		return
@@ -356,7 +356,14 @@ func Start(ctx *gin.Context) {
 		authToken = &tokenQuery
 	}
 
-	_, daemonVersion, err := runner.Docker.Start(ctx.Request.Context(), sandboxId, authToken, metadata)
+	_, daemonVersion, err := runner.Docker.Start(
+		ctx.Request.Context(),
+		sandboxId,
+		authToken,
+		startDto.Metadata,
+		startDto.Volumes,
+		startDto.VolumeMountCredentials,
+	)
 	if err != nil {
 		ctx.Error(err)
 		return

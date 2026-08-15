@@ -82,7 +82,7 @@ The snapshot store is an internal OCI-compliant registry that stores sandbox sna
 
 #### Volumes
 
-[Volumes](/docs/en/volumes) provide persistent storage that can be shared across sandboxes. Each volume is backed by S3-compatible object storage and mounted into sandboxes as a read-write directory. Multiple sandboxes can mount the same volume simultaneously, allowing data to be shared across sandboxes and persist independently of the sandbox lifecycle.
+[Volumes](/docs/en/volumes) provide persistent storage that can be shared across sandboxes. A volume can use Daytona-managed S3-compatible storage or reference an externally managed, pre-formatted JuiceFS filesystem. Daytona manages volume identity, access control, configuration, and mount orchestration; JuiceFS remains responsible for its metadata and data lifecycle. Multiple sandboxes can mount the same volume simultaneously, allowing data to be shared across sandboxes and persist independently of the sandbox lifecycle.
 
 ### Container registry
 
@@ -92,4 +92,3 @@ Container registries serve as the source for sandbox base images. When creating 
 - [Google Artifact Registry](/docs/en/snapshots#google-artifact-registry)
 - [GitHub Container Registry (GHCR)](/docs/en/snapshots#github-container-registry)
 - [Private registries](/docs/en/snapshots#using-images-from-private-registries): any registry that implements the OCI distribution specification
-

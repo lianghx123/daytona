@@ -65,6 +65,20 @@ describe('VolumeService', () => {
     expect(volumesApi.createVolume).toHaveBeenCalledWith({ name: 'vol5' })
   })
 
+  it('passes an optional JuiceFS backend to createVolume', async () => {
+    volumesApi.createVolume.mockResolvedValue(createApiResponse({ id: 'v7', name: 'juicefs-vol' }))
+    const backend = {
+      type: 'juicefs',
+      metaUrl: 'redis://metadata:6379/1',
+      cacheSizeMiB: 2048,
+      credential: { metaPassword: 'secret' },
+    } as never
+
+    await service.create('juicefs-vol', backend)
+
+    expect(volumesApi.createVolume).toHaveBeenCalledWith({ name: 'juicefs-vol', backend })
+  })
+
   it('propagates delete failures', async () => {
     const error = new Error('delete failed')
     volumesApi.deleteVolume.mockRejectedValue(error)

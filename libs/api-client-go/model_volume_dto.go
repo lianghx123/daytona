@@ -29,6 +29,8 @@ type VolumeDto struct {
 	OrganizationId string `json:"organizationId"`
 	// Volume state
 	State VolumeState `json:"state"`
+	Backend VolumeBackendDto `json:"backend"`
+	Lifecycle VolumeLifecycle `json:"lifecycle"`
 	// Creation timestamp
 	CreatedAt string `json:"createdAt"`
 	// Last update timestamp
@@ -46,12 +48,14 @@ type _VolumeDto VolumeDto
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewVolumeDto(id string, name string, organizationId string, state VolumeState, createdAt string, updatedAt string, errorReason NullableString) *VolumeDto {
+func NewVolumeDto(id string, name string, organizationId string, state VolumeState, backend VolumeBackendDto, lifecycle VolumeLifecycle, createdAt string, updatedAt string, errorReason NullableString) *VolumeDto {
 	this := VolumeDto{}
 	this.Id = id
 	this.Name = name
 	this.OrganizationId = organizationId
 	this.State = state
+	this.Backend = backend
+	this.Lifecycle = lifecycle
 	this.CreatedAt = createdAt
 	this.UpdatedAt = updatedAt
 	this.ErrorReason = errorReason
@@ -160,6 +164,54 @@ func (o *VolumeDto) GetStateOk() (*VolumeState, bool) {
 // SetState sets field value
 func (o *VolumeDto) SetState(v VolumeState) {
 	o.State = v
+}
+
+// GetBackend returns the Backend field value
+func (o *VolumeDto) GetBackend() VolumeBackendDto {
+	if o == nil {
+		var ret VolumeBackendDto
+		return ret
+	}
+
+	return o.Backend
+}
+
+// GetBackendOk returns a tuple with the Backend field value
+// and a boolean to check if the value has been set.
+func (o *VolumeDto) GetBackendOk() (*VolumeBackendDto, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return &o.Backend, true
+}
+
+// SetBackend sets field value
+func (o *VolumeDto) SetBackend(v VolumeBackendDto) {
+	o.Backend = v
+}
+
+// GetLifecycle returns the Lifecycle field value
+func (o *VolumeDto) GetLifecycle() VolumeLifecycle {
+	if o == nil {
+		var ret VolumeLifecycle
+		return ret
+	}
+
+	return o.Lifecycle
+}
+
+// GetLifecycleOk returns a tuple with the Lifecycle field value
+// and a boolean to check if the value has been set.
+func (o *VolumeDto) GetLifecycleOk() (*VolumeLifecycle, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return &o.Lifecycle, true
+}
+
+// SetLifecycle sets field value
+func (o *VolumeDto) SetLifecycle(v VolumeLifecycle) {
+	o.Lifecycle = v
 }
 
 // GetCreatedAt returns the CreatedAt field value
@@ -292,6 +344,8 @@ func (o VolumeDto) ToMap() (map[string]interface{}, error) {
 	toSerialize["name"] = o.Name
 	toSerialize["organizationId"] = o.OrganizationId
 	toSerialize["state"] = o.State
+	toSerialize["backend"] = o.Backend
+	toSerialize["lifecycle"] = o.Lifecycle
 	toSerialize["createdAt"] = o.CreatedAt
 	toSerialize["updatedAt"] = o.UpdatedAt
 	if o.LastUsedAt.IsSet() {
@@ -315,6 +369,8 @@ func (o *VolumeDto) UnmarshalJSON(data []byte) (err error) {
 		"name",
 		"organizationId",
 		"state",
+		"backend",
+		"lifecycle",
 		"createdAt",
 		"updatedAt",
 		"errorReason",
@@ -351,6 +407,8 @@ func (o *VolumeDto) UnmarshalJSON(data []byte) (err error) {
 		delete(additionalProperties, "name")
 		delete(additionalProperties, "organizationId")
 		delete(additionalProperties, "state")
+		delete(additionalProperties, "backend")
+		delete(additionalProperties, "lifecycle")
 		delete(additionalProperties, "createdAt")
 		delete(additionalProperties, "updatedAt")
 		delete(additionalProperties, "lastUsedAt")

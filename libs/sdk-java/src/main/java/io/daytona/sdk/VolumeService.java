@@ -5,6 +5,7 @@ package io.daytona.sdk;
 
 import io.daytona.api.client.api.VolumesApi;
 import io.daytona.api.client.model.CreateVolume;
+import io.daytona.api.client.model.CreateVolumeBackendDto;
 import io.daytona.sdk.model.Volume;
 
 import java.util.List;
@@ -30,8 +31,20 @@ public class VolumeService {
      * @throws io.daytona.sdk.exception.DaytonaException if creation fails
      */
     public Volume create(String name) {
+        return create(name, null);
+    }
+
+    /**
+     * Creates a new volume using the supplied storage backend.
+     *
+     * @param name volume name
+     * @param backend optional storage backend configuration
+     * @return created {@link Volume}
+     * @throws io.daytona.sdk.exception.DaytonaException if creation fails
+     */
+    public Volume create(String name, CreateVolumeBackendDto backend) {
         io.daytona.api.client.model.VolumeDto volumeDto = ExceptionMapper.callMain(
-                () -> volumesApi.createVolume(new CreateVolume().name(name), null)
+                () -> volumesApi.createVolume(new CreateVolume().name(name).backend(backend), null)
         );
         return toVolume(volumeDto);
     }
@@ -81,6 +94,8 @@ public class VolumeService {
             volume.setId(source.getId());
             volume.setName(source.getName());
             volume.setState(source.getState() == null ? null : source.getState().getValue());
+            volume.setBackend(source.getBackend());
+            volume.setLifecycle(source.getLifecycle() == null ? null : source.getLifecycle().getValue());
         }
         return volume;
     }

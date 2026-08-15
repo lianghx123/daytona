@@ -21,6 +21,9 @@ import { TrackJobExecution } from '../../common/decorators/track-job-execution.d
 import { setTimeout } from 'timers/promises'
 import { LogExecution } from '../../common/decorators/log-execution.decorator'
 import { WithInstrumentation } from '../../common/decorators/otel.decorator'
+import { VolumeBackendType } from '../enums/volume-backend-type.enum'
+import { VolumeLifecycle } from '../enums/volume-lifecycle.enum'
+import { VolumeCredentialService } from '../services/volume-credential.service'
 
 const VOLUME_STATE_LOCK_KEY = 'volume-state-'
 
@@ -42,6 +45,7 @@ export class VolumeManager
     @InjectRedis() private readonly redis: Redis,
     private readonly redisLockProvider: RedisLockProvider,
     private readonly schedulerRegistry: SchedulerRegistry,
+    private readonly volumeCredentialService: VolumeCredentialService,
   ) {
     if (!this.configService.get('s3.endpoint')) {
       return
@@ -78,10 +82,6 @@ export class VolumeManager
   }
 
   onApplicationBootstrap() {
-    if (!this.s3Client) {
-      return
-    }
-
     this.schedulerRegistry.getCronJob('process-pending-volumes').start()
   }
 
@@ -110,10 +110,6 @@ export class VolumeManager
   @LogExecution('process-pending-volumes')
   @WithInstrumentation()
   async processPendingVolumes() {
-    if (!this.s3Client) {
-      return
-    }
-
     try {
       // Lock the entire process
       const lockKey = 'process-pending-volumes'
@@ -192,33 +188,25 @@ export class VolumeManager
       await this.redis.setex(lockKey, 30, '1')
 
       // Create bucket in Minio/S3
-      const createBucketCommand = new CreateBucketCommand({
-        Bucket: volume.getBucketName(),
-      })
-
-      await this.s3Client.send(createBucketCommand)
-
-      await this.s3Client.send(
-        new PutBucketTaggingCommand({
-          Bucket: volume.getBucketName(),
-          Tagging: {
-            TagSet: [
-              {
-                Key: 'VolumeId',
-                Value: volume.id,
-              },
-              {
-                Key: 'OrganizationId',
-                Value: volume.organizationId,
-              },
-              {
-                Key: 'Environment',
-                Value: this.configService.get('environment'),
-              },
-            ],
-          },
-        }),
-      )
+      if (volume.backendType === VolumeBackendType.MANAGED_S3) {
+        if (!this.s3Client) {
+          throw new Error('Object storage is not configured')
+        }
+        const createBucketCommand = new CreateBucketCommand({ Bucket: volume.getBucketName() })
+        await this.s3Client.send(createBucketCommand)
+        await this.s3Client.send(
+          new PutBucketTaggingCommand({
+            Bucket: volume.getBucketName(),
+            Tagging: {
+              TagSet: [
+                { Key: 'VolumeId', Value: volume.id },
+                { Key: 'OrganizationId', Value: volume.organizationId },
+                { Key: 'Environment', Value: this.configService.get('environment') },
+              ],
+            },
+          }),
+        )
+      }
 
       // Refresh lock before final state update
       await this.redis.setex(lockKey, 30, '1')
@@ -253,17 +241,26 @@ export class VolumeManager
       // Refresh lock before S3 operation
       await this.redis.setex(lockKey, 30, '1')
 
-      // Delete bucket from Minio/S3
-      try {
-        await deleteS3Bucket(this.s3Client, volume.getBucketName())
-      } catch (error) {
-        if (error.name === 'NoSuchBucket') {
-          this.logger.warn(`Bucket for volume ${volume.id} does not exist, treating as already deleted`)
-        } else if (error.name === 'BucketNotEmpty') {
-          throw new Error('Volume deletion failed because the bucket is not empty. You may retry deletion.')
-        } else {
-          throw error
+      if (volume.lifecycle === VolumeLifecycle.MANAGED) {
+        if (!this.s3Client) {
+          throw new Error('Object storage is not configured')
         }
+        try {
+          await deleteS3Bucket(this.s3Client, volume.getBucketName())
+        } catch (error) {
+          if (error.name === 'NoSuchBucket') {
+            this.logger.warn(`Bucket for volume ${volume.id} does not exist, treating as already deleted`)
+          } else if (error.name === 'BucketNotEmpty') {
+            throw new Error('Volume deletion failed because the bucket is not empty. You may retry deletion.')
+          } else {
+            throw error
+          }
+        }
+      }
+
+      if (volume.credentialRef) {
+        await this.volumeCredentialService.delete(volume.credentialRef)
+        volume.credentialRef = null
       }
 
       // Refresh lock before final state update

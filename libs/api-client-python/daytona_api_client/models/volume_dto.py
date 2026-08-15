@@ -20,6 +20,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from daytona_api_client.models.volume_backend_dto import VolumeBackendDto
+from daytona_api_client.models.volume_lifecycle import VolumeLifecycle
 from daytona_api_client.models.volume_state import VolumeState
 from pydantic import TypeAdapter
 from typing import Optional, Set
@@ -35,12 +37,14 @@ class VolumeDto(BaseModel):
     name: StrictStr = Field(description="Volume name")
     organization_id: StrictStr = Field(description="Organization ID", serialization_alias="organizationId")
     state: VolumeState = Field(description="Volume state")
+    backend: VolumeBackendDto
+    lifecycle: VolumeLifecycle
     created_at: StrictStr = Field(description="Creation timestamp", serialization_alias="createdAt")
     updated_at: StrictStr = Field(description="Last update timestamp", serialization_alias="updatedAt")
     last_used_at: Optional[StrictStr] = Field(default=None, description="Last used timestamp", serialization_alias="lastUsedAt")
     error_reason: Optional[StrictStr] = Field(description="The error reason of the volume", serialization_alias="errorReason")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["id", "name", "organizationId", "state", "createdAt", "updatedAt", "lastUsedAt", "errorReason"]
+    __properties: ClassVar[List[str]] = ["id", "name", "organizationId", "state", "backend", "lifecycle", "createdAt", "updatedAt", "lastUsedAt", "errorReason"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -82,6 +86,9 @@ class VolumeDto(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of backend
+        if self.backend:
+            _dict['backend'] = self.backend.to_dict()
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
@@ -113,6 +120,8 @@ class VolumeDto(BaseModel):
             "name": obj.get("name"),
             "organization_id": obj.get("organizationId"),
             "state": obj.get("state"),
+            "backend": VolumeBackendDto.from_dict(obj["backend"]) if obj.get("backend") is not None else None,
+            "lifecycle": obj.get("lifecycle"),
             "created_at": obj.get("createdAt"),
             "updated_at": obj.get("updatedAt"),
             "last_used_at": obj.get("lastUsedAt"),

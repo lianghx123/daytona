@@ -43,6 +43,7 @@ import {
   RecoverSandboxDTO,
 } from '@daytona/runner-api-client'
 import { SnapshotStateError } from '../errors/snapshot-state-error'
+import { VolumeMountSpecResolver } from '../services/volume-mount-spec-resolver.service'
 
 /**
  * RunnerAdapterV2 implements RunnerAdapter for v2 runners.
@@ -59,6 +60,7 @@ export class RunnerAdapterV2 implements RunnerAdapter {
     @InjectRepository(Job)
     protected readonly jobRepository: Repository<Job>,
     protected readonly jobService: JobService,
+    protected readonly volumeMountSpecResolver: VolumeMountSpecResolver,
   ) {}
 
   async init(runner: Runner): Promise<void> {
@@ -157,6 +159,7 @@ export class RunnerAdapterV2 implements RunnerAdapter {
     otelEndpoint?: string,
     skipStart?: boolean,
   ): Promise<StartSandboxResponse | undefined> {
+    const volumeMountSpec = await this.volumeMountSpecResolver.resolve(sandbox.organizationId, sandbox.volumes)
     const payload: CreateSandboxDTO = {
       id: sandbox.id,
       name: sandbox.name,
@@ -177,11 +180,7 @@ export class RunnerAdapterV2 implements RunnerAdapter {
           }
         : undefined,
       entrypoint: entrypoint,
-      volumes: sandbox.volumes?.map((volume) => ({
-        volumeId: volume.volumeId,
-        mountPath: volume.mountPath,
-        subpath: volume.subpath,
-      })),
+      volumes: volumeMountSpec.volumes,
       networkBlockAll: sandbox.networkBlockAll,
       networkAllowList: sandbox.networkAllowList,
       domainAllowList: sandbox.domainAllowList,
@@ -211,16 +210,17 @@ export class RunnerAdapterV2 implements RunnerAdapter {
   }
 
   async startSandbox(
-    sandboxId: string,
-    authToken: string,
+    sandbox: Sandbox,
     metadata?: { [key: string]: string },
   ): Promise<StartSandboxResponse | undefined> {
-    await this.jobService.createJob(null, JobType.START_SANDBOX, this.runner.id, ResourceType.SANDBOX, sandboxId, {
-      authToken,
+    const volumeMountSpec = await this.volumeMountSpecResolver.resolve(sandbox.organizationId, sandbox.volumes)
+    await this.jobService.createJob(null, JobType.START_SANDBOX, this.runner.id, ResourceType.SANDBOX, sandbox.id, {
+      authToken: sandbox.authToken,
       metadata,
+      volumes: volumeMountSpec.volumes,
     })
 
-    this.logger.debug(`Created START_SANDBOX job for sandbox ${sandboxId} on runner ${this.runner.id}`)
+    this.logger.debug(`Created START_SANDBOX job for sandbox ${sandbox.id} on runner ${this.runner.id}`)
 
     // Daemon version will be set in the job result metadata
     return undefined
@@ -241,6 +241,7 @@ export class RunnerAdapterV2 implements RunnerAdapter {
   }
 
   async recoverSandbox(sandbox: Sandbox, registry?: DockerRegistry, skipStart = false): Promise<void> {
+    const volumeMountSpec = await this.volumeMountSpecResolver.resolve(sandbox.organizationId, sandbox.volumes)
     const recoverSandboxDTO: RecoverSandboxDTO = {
       userId: sandbox.organizationId,
       snapshot: sandbox.snapshot,
@@ -250,11 +251,7 @@ export class RunnerAdapterV2 implements RunnerAdapter {
       memoryQuota: sandbox.mem,
       storageQuota: sandbox.disk,
       env: sandbox.env,
-      volumes: sandbox.volumes?.map((volume) => ({
-        volumeId: volume.volumeId,
-        mountPath: volume.mountPath,
-        subpath: volume.subpath,
-      })),
+      volumes: volumeMountSpec.volumes,
       networkBlockAll: sandbox.networkBlockAll,
       networkAllowList: sandbox.networkAllowList,
       errorReason: sandbox.errorReason,

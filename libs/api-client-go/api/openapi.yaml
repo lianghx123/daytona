@@ -14283,13 +14283,46 @@ components:
       - deleted
       - error
       type: string
+    VolumeBackendType:
+      enum:
+      - managed_s3
+      - juicefs
+      type: string
+    VolumeBackendDto:
+      example:
+        metaUrl: redis://juicefs-meta:6379/12
+        type: ""
+        cacheSizeMiB: 10240
+      properties:
+        type:
+          allOf:
+          - $ref: "#/components/schemas/VolumeBackendType"
+        metaUrl:
+          example: redis://juicefs-meta:6379/12
+          type: string
+        cacheSizeMiB:
+          example: 10240
+          type: number
+      required:
+      - type
+      type: object
+    VolumeLifecycle:
+      enum:
+      - managed
+      - external
+      type: string
     VolumeDto:
       example:
         organizationId: 123e4567-e89b-12d3-a456-426614174000
+        lifecycle: ""
         createdAt: 2023-01-01T00:00:00.000Z
         lastUsedAt: 2023-01-01T00:00:00.000Z
         errorReason: Error processing volume
         name: my-volume
+        backend:
+          metaUrl: redis://juicefs-meta:6379/12
+          type: ""
+          cacheSizeMiB: 10240
         id: vol-12345678
         state: ready
         updatedAt: 2023-01-01T00:00:00.000Z
@@ -14311,6 +14344,11 @@ components:
           - $ref: "#/components/schemas/VolumeState"
           description: Volume state
           example: ready
+        backend:
+          $ref: "#/components/schemas/VolumeBackendDto"
+        lifecycle:
+          allOf:
+          - $ref: "#/components/schemas/VolumeLifecycle"
         createdAt:
           description: Creation timestamp
           example: 2023-01-01T00:00:00.000Z
@@ -14330,20 +14368,55 @@ components:
           nullable: true
           type: string
       required:
+      - backend
       - createdAt
       - errorReason
       - id
+      - lifecycle
       - name
       - organizationId
       - state
       - updatedAt
       type: object
+    JuiceFSVolumeCredentialDto:
+      properties:
+        metaPassword:
+          description: Password for the JuiceFS metadata engine.
+          type: string
+          writeOnly: true
+      type: object
+    CreateVolumeBackendDto:
+      properties:
+        type:
+          allOf:
+          - $ref: "#/components/schemas/VolumeBackendType"
+        metaUrl:
+          example: redis://juicefs-meta:6379/12
+          type: string
+        cacheSizeMiB:
+          default: 10240
+          minimum: 0
+          type: number
+        credential:
+          allOf:
+          - $ref: "#/components/schemas/JuiceFSVolumeCredentialDto"
+          writeOnly: true
+      required:
+      - type
+      type: object
     CreateVolume:
       example:
         name: name
+        backend: ""
       properties:
         name:
           type: string
+        backend:
+          allOf:
+          - $ref: "#/components/schemas/CreateVolumeBackendDto"
+          description: Storage backend. Omit to create a Daytona-managed S3 volume.
+          oneOf:
+          - $ref: "#/components/schemas/CreateVolumeBackendDto"
       required:
       - name
       type: object

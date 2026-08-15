@@ -152,6 +152,23 @@ func TestVolumeSuccessOperations(t *testing.T) {
 	})
 }
 
+func TestVolumeCreateWithOptionsSendsBackend(t *testing.T) {
+	var requestBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&requestBody))
+		writeJSONResponse(t, w, http.StatusOK, testVolumePayload("vol-1", "juicefs", apiclient.VOLUMESTATE_PENDING_CREATE))
+	}))
+	defer server.Close()
+
+	client := createTestClientWithServer(t, server)
+	backend := apiclient.NewCreateVolumeBackendDto(apiclient.VOLUMEBACKENDTYPE_JUICEFS)
+	backend.SetMetaUrl("redis://metadata:6379/1")
+	_, err := client.Volume.CreateWithOptions(context.Background(), "juicefs", &CreateVolumeOptions{Backend: backend})
+	require.NoError(t, err)
+	assert.Equal(t, "juicefs", requestBody["name"])
+	assert.Equal(t, "juicefs", requestBody["backend"].(map[string]any)["type"])
+}
+
 func TestVolumeWaitForReadyBehaviors(t *testing.T) {
 	t.Run("returns ready volume", func(t *testing.T) {
 		var calls int

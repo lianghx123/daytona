@@ -18,6 +18,8 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import io.daytona.api.client.model.VolumeBackendDto;
+import io.daytona.api.client.model.VolumeLifecycle;
 import io.daytona.api.client.model.VolumeState;
 import java.io.IOException;
 import java.util.Arrays;
@@ -69,6 +71,22 @@ public class VolumeDtoTest {
     @Test
     public void stateTest() {
         // TODO: test state
+    }
+
+    /**
+     * Test the property 'backend'
+     */
+    @Test
+    public void backendTest() {
+        // TODO: test backend
+    }
+
+    /**
+     * Test the property 'lifecycle'
+     */
+    @Test
+    public void lifecycleTest() {
+        // TODO: test lifecycle
     }
 
     /**

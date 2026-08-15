@@ -110,17 +110,8 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 			return "", "", err
 		}
 
-		metadata := maps.Clone(sandboxDto.Metadata)
-		if len(sandboxDto.Volumes) > 0 {
-			if metadata == nil {
-				metadata = make(map[string]string)
-			}
-			volumesJSON, err := json.Marshal(sandboxDto.Volumes)
-			if err == nil {
-				metadata["volumes"] = string(volumesJSON)
-			}
-		}
-		_, daemonVersion, err := d.Start(ctx, sandboxDto.Id, sandboxDto.AuthToken, metadata)
+		metadata := metadataWithVolumes(sandboxDto.Metadata, sandboxDto.Volumes)
+		_, daemonVersion, err := d.Start(ctx, sandboxDto.Id, sandboxDto.AuthToken, metadata, sandboxDto.Volumes, sandboxDto.VolumeMountCredentials)
 		if err != nil {
 			return "", "", err
 		}
@@ -151,7 +142,7 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 
 	volumeMountPathBinds := make([]string, 0)
 	if sandboxDto.Volumes != nil {
-		volumeMountPathBinds, err = d.getVolumesMountPathBinds(ctx, sandboxDto.Volumes)
+		volumeMountPathBinds, err = d.getVolumesMountPathBinds(ctx, sandboxDto.Volumes, sandboxDto.VolumeMountCredentials)
 		if err != nil {
 			return "", "", err
 		}
@@ -231,7 +222,8 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 		return c.ID, "", nil
 	}
 
-	runningContainer, daemonVersion, err := d.Start(ctx, sandboxDto.Id, sandboxDto.AuthToken, sandboxDto.Metadata)
+	metadata := metadataWithVolumes(sandboxDto.Metadata, sandboxDto.Volumes)
+	runningContainer, daemonVersion, err := d.Start(ctx, sandboxDto.Id, sandboxDto.AuthToken, metadata, sandboxDto.Volumes, sandboxDto.VolumeMountCredentials)
 	if err != nil {
 		return "", "", err
 	}
@@ -265,6 +257,20 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 	}
 
 	return c.ID, daemonVersion, nil
+}
+
+func metadataWithVolumes(metadata map[string]string, volumes []dto.VolumeDTO) map[string]string {
+	result := maps.Clone(metadata)
+	if len(volumes) == 0 {
+		return result
+	}
+	if result == nil {
+		result = make(map[string]string)
+	}
+	if volumesJSON, err := json.Marshal(volumes); err == nil {
+		result["volumes"] = string(volumesJSON)
+	}
+	return result
 }
 
 func (p *DockerClient) validateImageArchitecture(image *image.InspectResponse) error {

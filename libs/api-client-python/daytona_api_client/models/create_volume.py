@@ -18,8 +18,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr
-from typing import Any, ClassVar, Dict, List
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from pydantic import TypeAdapter
 from typing import Optional, Set
 from typing_extensions import Self
@@ -31,8 +31,9 @@ class CreateVolume(BaseModel):
     CreateVolume
     """ # noqa: E501
     name: StrictStr
+    backend: Optional[Any] = Field(default=None, description="Storage backend. Omit to create a Daytona-managed S3 volume.")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["name"]
+    __properties: ClassVar[List[str]] = ["name", "backend"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -74,6 +75,9 @@ class CreateVolume(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of backend
+        if self.backend:
+            _dict['backend'] = self.backend.to_dict()
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
@@ -91,7 +95,8 @@ class CreateVolume(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "name": obj.get("name")
+            "name": obj.get("name"),
+            "backend": CreateVolumeBackendDto.from_dict(obj["backend"]) if obj.get("backend") is not None else None
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

@@ -18,6 +18,9 @@
 import type { DtoVolumeDTO } from './dto-volume-dto';
 // May contain unused imports in some cases
 // @ts-ignore
+import type { DtoVolumeMountCredentialDTO } from './dto-volume-mount-credential-dto';
+// May contain unused imports in some cases
+// @ts-ignore
 import type { RegistryDTO } from './registry-dto';
 
 export interface CreateSandboxDTO {
@@ -57,6 +60,7 @@ export interface CreateSandboxDTO {
     'snapshot': string;
     'storageQuota'?: number;
     'userId': string;
+    'volumeMountCredentials'?: { [key: string]: DtoVolumeMountCredentialDTO; };
     'volumes'?: Array<DtoVolumeDTO>;
 }
 

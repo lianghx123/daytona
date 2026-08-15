@@ -17,10 +17,14 @@ module DaytonaApiClient
   class CreateVolume < ApiModelBase
     attr_accessor :name
 
+    # Storage backend. Omit to create a Daytona-managed S3 volume.
+    attr_accessor :backend
+
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
-        :'name' => :'name'
+        :'name' => :'name',
+        :'backend' => :'backend'
       }
     end
 
@@ -37,7 +41,8 @@ module DaytonaApiClient
     # Attribute type mapping.
     def self.openapi_types
       {
-        :'name' => :'String'
+        :'name' => :'String',
+        :'backend' => :'CreateVolumeBackendDto'
       }
     end
 
@@ -67,6 +72,10 @@ module DaytonaApiClient
         self.name = attributes[:'name']
       else
         self.name = nil
+      end
+
+      if attributes.key?(:'backend')
+        self.backend = attributes[:'backend']
       end
     end
 
@@ -105,7 +114,8 @@ module DaytonaApiClient
     def ==(o)
       return true if self.equal?(o)
       self.class == o.class &&
-          name == o.name
+          name == o.name &&
+          backend == o.backend
     end
 
     # @see the `==` method
@@ -117,7 +127,7 @@ module DaytonaApiClient
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [name].hash
+      [name, backend].hash
     end
 
     # Builds the object from hash

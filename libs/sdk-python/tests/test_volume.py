@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from daytona.common.volume import Volume
-from daytona_api_client import VolumeDto
+from daytona_api_client import CreateVolumeBackendDto, VolumeBackendType, VolumeDto
 
 
 def _make_volume_dto(name="test-vol", vol_id="vol-123"):
@@ -21,6 +21,8 @@ def _make_volume_dto(name="test-vol", vol_id="vol-123"):
         created_at="2025-01-01T00:00:00Z",
         updated_at="2025-01-01T00:00:00Z",
         last_used_at="2025-01-01T00:00:00Z",
+        backend={"type": "managed_s3"},
+        lifecycle="managed",
     )
 
 
@@ -81,6 +83,20 @@ class TestSyncVolumeService:
         result = service.create("new-vol")
         assert isinstance(result, Volume)
 
+    def test_create_with_backend(self):
+        service, api = self._make_service()
+        api.create_volume.return_value = _make_volume_dto(name="juicefs-vol")
+        backend = CreateVolumeBackendDto(
+            type=VolumeBackendType.JUICEFS,
+            meta_url="redis://metadata:6379/1",
+            cache_size_mi_b=2048,
+        )
+
+        service.create("juicefs-vol", backend)
+
+        request = api.create_volume.call_args.args[0]
+        assert request.backend is backend
+
     def test_delete(self):
         service, api = self._make_service()
         api.delete_volume.return_value = None
@@ -117,6 +133,23 @@ class TestAsyncVolumeService:
         api.create_volume.return_value = _make_volume_dto(name="new-vol")
         result = await service.create("new-vol")
         assert isinstance(result, Volume)
+
+    @pytest.mark.asyncio
+    async def test_create_with_backend(self):
+        from daytona_api_client_async import CreateVolumeBackendDto, VolumeBackendType
+
+        service, api = self._make_service()
+        api.create_volume.return_value = _make_volume_dto(name="juicefs-vol")
+        backend = CreateVolumeBackendDto(
+            type=VolumeBackendType.JUICEFS,
+            meta_url="redis://metadata:6379/1",
+            cache_size_mi_b=2048,
+        )
+
+        await service.create("juicefs-vol", backend)
+
+        request = api.create_volume.call_args.args[0]
+        assert request.backend is backend
 
     @pytest.mark.asyncio
     async def test_delete(self):

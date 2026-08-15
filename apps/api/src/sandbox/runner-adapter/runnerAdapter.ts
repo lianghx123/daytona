@@ -88,8 +88,7 @@ export interface RunnerAdapter {
     skipStart?: boolean,
   ): Promise<StartSandboxResponse | undefined>
   startSandbox(
-    sandboxId: string,
-    authToken: string,
+    sandbox: Sandbox,
     metadata?: { [key: string]: string },
     skipStart?: boolean,
   ): Promise<StartSandboxResponse | undefined>

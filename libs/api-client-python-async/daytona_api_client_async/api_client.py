@@ -93,7 +93,7 @@ class ApiClient:
             self.default_headers[header_name] = header_value
         self.cookie = cookie
         # Set default User-Agent.
-        self.user_agent = f'api-client-python-async/{_pkg_version}'
+        self.user_agent = f'python-async/{_pkg_version}'
         self.client_side_validation = configuration.client_side_validation
 
     async def __aenter__(self):

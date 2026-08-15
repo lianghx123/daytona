@@ -19,6 +19,8 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import io.daytona.api.client.model.VolumeBackendDto;
+import io.daytona.api.client.model.VolumeLifecycle;
 import io.daytona.api.client.model.VolumeState;
 import java.io.IOException;
 import java.util.Arrays;
@@ -71,6 +73,16 @@ public class VolumeDto {
   @SerializedName(SERIALIZED_NAME_STATE)
   @javax.annotation.Nonnull
   private VolumeState state;
+
+  public static final String SERIALIZED_NAME_BACKEND = "backend";
+  @SerializedName(SERIALIZED_NAME_BACKEND)
+  @javax.annotation.Nonnull
+  private VolumeBackendDto backend;
+
+  public static final String SERIALIZED_NAME_LIFECYCLE = "lifecycle";
+  @SerializedName(SERIALIZED_NAME_LIFECYCLE)
+  @javax.annotation.Nonnull
+  private VolumeLifecycle lifecycle;
 
   public static final String SERIALIZED_NAME_CREATED_AT = "createdAt";
   @SerializedName(SERIALIZED_NAME_CREATED_AT)
@@ -168,6 +180,44 @@ public class VolumeDto {
 
   public void setState(@javax.annotation.Nonnull VolumeState state) {
     this.state = state;
+  }
+
+
+  public VolumeDto backend(@javax.annotation.Nonnull VolumeBackendDto backend) {
+    this.backend = backend;
+    return this;
+  }
+
+  /**
+   * Get backend
+   * @return backend
+   */
+  @javax.annotation.Nonnull
+  public VolumeBackendDto getBackend() {
+    return backend;
+  }
+
+  public void setBackend(@javax.annotation.Nonnull VolumeBackendDto backend) {
+    this.backend = backend;
+  }
+
+
+  public VolumeDto lifecycle(@javax.annotation.Nonnull VolumeLifecycle lifecycle) {
+    this.lifecycle = lifecycle;
+    return this;
+  }
+
+  /**
+   * Get lifecycle
+   * @return lifecycle
+   */
+  @javax.annotation.Nonnull
+  public VolumeLifecycle getLifecycle() {
+    return lifecycle;
+  }
+
+  public void setLifecycle(@javax.annotation.Nonnull VolumeLifecycle lifecycle) {
+    this.lifecycle = lifecycle;
   }
 
 
@@ -305,6 +355,8 @@ public class VolumeDto {
         Objects.equals(this.name, volumeDto.name) &&
         Objects.equals(this.organizationId, volumeDto.organizationId) &&
         Objects.equals(this.state, volumeDto.state) &&
+        Objects.equals(this.backend, volumeDto.backend) &&
+        Objects.equals(this.lifecycle, volumeDto.lifecycle) &&
         Objects.equals(this.createdAt, volumeDto.createdAt) &&
         Objects.equals(this.updatedAt, volumeDto.updatedAt) &&
         Objects.equals(this.lastUsedAt, volumeDto.lastUsedAt) &&
@@ -318,7 +370,7 @@ public class VolumeDto {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, name, organizationId, state, createdAt, updatedAt, lastUsedAt, errorReason, additionalProperties);
+    return Objects.hash(id, name, organizationId, state, backend, lifecycle, createdAt, updatedAt, lastUsedAt, errorReason, additionalProperties);
   }
 
   private static <T> int hashCodeNullable(JsonNullable<T> a) {
@@ -336,6 +388,8 @@ public class VolumeDto {
     sb.append("    name: ").append(toIndentedString(name)).append("\n");
     sb.append("    organizationId: ").append(toIndentedString(organizationId)).append("\n");
     sb.append("    state: ").append(toIndentedString(state)).append("\n");
+    sb.append("    backend: ").append(toIndentedString(backend)).append("\n");
+    sb.append("    lifecycle: ").append(toIndentedString(lifecycle)).append("\n");
     sb.append("    createdAt: ").append(toIndentedString(createdAt)).append("\n");
     sb.append("    updatedAt: ").append(toIndentedString(updatedAt)).append("\n");
     sb.append("    lastUsedAt: ").append(toIndentedString(lastUsedAt)).append("\n");
@@ -359,10 +413,10 @@ public class VolumeDto {
 
   static {
     // a set of all properties/fields (JSON key names)
-    openapiFields = new HashSet<String>(Arrays.asList("id", "name", "organizationId", "state", "createdAt", "updatedAt", "lastUsedAt", "errorReason"));
+    openapiFields = new HashSet<String>(Arrays.asList("id", "name", "organizationId", "state", "backend", "lifecycle", "createdAt", "updatedAt", "lastUsedAt", "errorReason"));
 
     // a set of required properties/fields (JSON key names)
-    openapiRequiredFields = new HashSet<String>(Arrays.asList("id", "name", "organizationId", "state", "createdAt", "updatedAt", "errorReason"));
+    openapiRequiredFields = new HashSet<String>(Arrays.asList("id", "name", "organizationId", "state", "backend", "lifecycle", "createdAt", "updatedAt", "errorReason"));
   }
 
   /**
@@ -396,6 +450,10 @@ public class VolumeDto {
       }
       // validate the required field `state`
       VolumeState.validateJsonElement(jsonObj.get("state"));
+      // validate the required field `backend`
+      VolumeBackendDto.validateJsonElement(jsonObj.get("backend"));
+      // validate the required field `lifecycle`
+      VolumeLifecycle.validateJsonElement(jsonObj.get("lifecycle"));
       if (!jsonObj.get("createdAt").isJsonPrimitive()) {
         throw new IllegalArgumentException(String.format(java.util.Locale.ROOT, "Expected the field `createdAt` to be a primitive type in the JSON string but got `%s`", jsonObj.get("createdAt").toString()));
       }

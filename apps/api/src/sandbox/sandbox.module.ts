@@ -62,6 +62,10 @@ import { SandboxActivityService } from './services/sandbox-activity.service'
 import { OpensearchModule } from 'nestjs-opensearch'
 import { TypedConfigService } from '../config/typed-config.service'
 import { SandboxSearchAdapterProvider } from './providers/sandbox-search.provider'
+import { EncryptionModule } from '../encryption/encryption.module'
+import { VolumeCredential } from './entities/volume-credential.entity'
+import { VolumeCredentialService } from './services/volume-credential.service'
+import { VolumeMountSpecResolver } from './services/volume-mount-spec-resolver.service'
 
 @Module({
   imports: [
@@ -69,6 +73,7 @@ import { SandboxSearchAdapterProvider } from './providers/sandbox-search.provide
     DockerRegistryModule,
     OrganizationModule,
     RegionModule,
+    EncryptionModule,
     TypeOrmModule.forFeature([
       Sandbox,
       Runner,
@@ -79,6 +84,7 @@ import { SandboxSearchAdapterProvider } from './providers/sandbox-search.provide
       DockerRegistry,
       WarmPool,
       Volume,
+      VolumeCredential,
       SshAccess,
       Region,
       Job,
@@ -115,6 +121,8 @@ import { SandboxSearchAdapterProvider } from './providers/sandbox-search.provide
     RedisLockProvider,
     VolumeService,
     VolumeManager,
+    VolumeCredentialService,
+    VolumeMountSpecResolver,
     VolumeSubscriber,
     RunnerSubscriber,
     RunnerAdapterFactory,
